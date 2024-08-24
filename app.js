@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const prisma = require("./config/prisma");
 
 const router = require("./router");
 
