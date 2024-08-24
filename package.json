@@ -4,12 +4,17 @@
   "description": "p-Chip Cloud API service application",
   "main": "index.js",
   "scripts": {
-    "start":"node app.js"
+    "start": "node app.js",
+    "build": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^5.18.0",
     "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0"
   }
 }

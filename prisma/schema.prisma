@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//User registered with p-Chip Cloud authenticated with firebase
+model User {
+  id          String       @id @default(cuid())
+  uid         String       @unique //Auth uid from firebase
+  name        String
+  email       String
+  tenantId    String
+  tenant      Tenant       @relation("TenantToUser", fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenantUsers TenantUser[] @relation("UserToTenantUser")
+}
+
+//A list of tenants (companies, organizations or other legal entities) that are registered and approved to access the data. The tenant is the highest level of user access restriction
+model Tenant {
+  id                        String              @id @default(cuid())
+  name                      String
+  website                   String
+  logo                      String
+  isAuth                    Boolean             @default(true)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  users                     User[]              @relation("TenantToUser")
+  tenantUsers               TenantUser[]        @relation("TenantToTenantUser")
+  documentConfig            DocumentConfig[]    @relation("TenantToDocumentConfig")
+  createdPublishedDocuments PublishedDocument[] @relation("TenantToPublishedDocument")
+  ownedPublishedDocuments   PublishedDocument[] @relation("OwnerToPublishedDocument")
+}
+
+//Users that have been granted access to tenant resources and data
+model TenantUser {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation("UserToTenantUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tenantId        String
+  tenant          Tenant            @relation("TenantToTenantUser", fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  isAuth          Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  tenantOrgUserId TenantOrgUser[]   @relation("TenantUserToTenantOrgUser")
+  trackedDocument TrackedDocument[] @relation("TenantOrgUserToTrackedDocument")
+
+  @@unique([userId, tenantId])
+}
+
+//Top level roles that define what users can do within a tenant
+enum TenantRoles {
+  administrator //Mangaes the tenant account
+  manager //Manages the tenant organization to which they are assigned
+  individualContributor //Manages the data that they create
+}
+
+//A resource group within a tenant account
+model TenantOrg {
+  id               String            @id @default(cuid())
+  name             String
+  parentId         String
+  parent           TenantOrg         @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  subOrgs          TenantOrg[]       @relation("ParentToChild")
+  tenantOrgUsers   TenantOrgUser[]   @relation("TenantOrgToTenantOrgUser")
+  tenantOrgDocs    TenantOrgDoc[]    @relation("TenantOrgToTenantOrgDoc")
+  trackedDocuments TrackedDocument[] @relation("TenantOrgToTrackedDocument")
+}
+
+//
+model TenantOrgUser {
+  tenantOrgId  String
+  tenantOrg    TenantOrg  @relation("TenantOrgToTenantOrgUser", fields: [tenantOrgId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tenantUserId String
+  tenantUser   TenantUser @relation("TenantUserToTenantOrgUser", fields: [tenantUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  permission   Permission //What the user can do within an organization
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@id([tenantOrgId, tenantUserId])
+}
+
+enum Permission {
+  read
+  write
+}
+
+//The type of document such as a product, test, or other document type tha the tenant wants to specify
+model DocumentConfig {
+  id            String     @id @default(cuid())
+  name          String
+  fields        Json //Fields where the value is it in the document object. //Example: Product Name, SKU, Description, Image, Etc.
+  trackedFields Json //Fields where the value will is set in tracked documents //Example: Created Date, Created Location, Batch Number, Etc.
+  tenantId      String
+  tenant        Tenant     @relation("TenantToDocumentConfig", fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  documents     Document[] @relation("DocumentConfigToDocument")
+}
+
+model Document {
+  id               String            @id @default(cuid())
+  name             String
+  documentConfigId String
+  documentConfig   DocumentConfig    @relation("DocumentConfigToDocument", fields: [documentConfigId], references: [id], onDelete: Cascade)
+  documentFields   Json
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  tenantOrgDocs    TenantOrgDoc[]    @relation("DocumentToTenantOrgDoc")
+  trackedDocuments TrackedDocument[] @relation("DocumentToTrackedDocument")
+}
+
+model TenantOrgDoc {
+  tenantOrgId String
+  tenantOrg   TenantOrg @relation("TenantOrgToTenantOrgDoc", fields: [tenantOrgId], references: [id], onDelete: Cascade)
+  documentId  String
+  document    Document  @relation("DocumentToTenantOrgDoc", fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@id([tenantOrgId, documentId])
+}
+
+//Documents that are created by a tenant organization and one or more microtransponders are applied to physical items generated from the document
+model TrackedDocument {
+  id            String         @id @default(cuid())
+  uid           String         @default(cuid())
+  documentId    String
+  document      Document       @relation("DocumentToTrackedDocument", fields: [documentId], references: [id], onDelete: Cascade)
+  tenantOrgId   String
+  tenantOrg     TenantOrg      @relation("TenantOrgToTrackedDocument", fields: [tenantOrgId], references: [id], onDelete: Cascade)
+  trackedFields Json           @default("[{}]")
+  createdById   String
+  createdBy     TenantUser     @relation("TenantOrgUserToTrackedDocument", fields: [createdById], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  mticDocuments MTICDocument[] @relation("TrackedDocumentToMTICDocument")
+}
+
+//Micro-transponder identify chip that are attached to tracked documents
+model MTIC {
+  id                String              @id
+  uid               String              @default(cuid()) //A universally unique id that is associated with the tracked document. This unique id cannot be changed.
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  mticLogs          MTICLog[]           @relation("MTICtoMTICLog")
+  PublishedDocument PublishedDocument[] @relation("MTICToPublishedDocument")
+}
+
+model MTICLog {
+  id            String         @id @default(cuid())
+  mticId        String
+  mtic          MTIC           @relation("MTICtoMTICLog", fields: [mticId], references: [id])
+  mticReaderId  String
+  mticReader    MTICReader     @relation("MTICReaderToMTICLog", fields: [mticReaderId], references: [id])
+  lat           Decimal
+  lon           Decimal
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  mticDocuments MTICDocument[] @relation("MTICLogToMTICDocument")
+}
+
+model MTICReader {
+  id        String    @id
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  mticLogs  MTICLog[] @relation("MTICReaderToMTICLog")
+}
+
+model MTICDocument {
+  id                String          @id @default(cuid())
+  mticLogId         String
+  mticLog           MTICLog         @relation("MTICLogToMTICDocument", fields: [mticLogId], references: [id], onDelete: Cascade)
+  trackedDocumentId String
+  trackedDocument   TrackedDocument @relation("TrackedDocumentToMTICDocument", fields: [trackedDocumentId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+enum Event {
+  create
+  read
+  update
+  delete
+  transfer
+}
+
+model PublishedDocument {
+  id           String   @id
+  uid          String // camelCase for field names
+  mticId       String
+  mtic         MTIC     @relation("MTICToPublishedDocument", fields: [mticId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  documentJson Json
+  createdById  String
+  createdBy    Tenant   @relation("TenantToPublishedDocument", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ownerId      String // Ensure consistent camelCase naming
+  owner        Tenant   @relation("OwnerToPublishedDocument", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: Cascade) // Added a relation name for clarity
+  createdAt    DateTime @default(now())
+}
