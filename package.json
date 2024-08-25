@@ -2,7 +2,7 @@
   "name": "pcc-cloud-service",
   "version": "1.0.0",
   "description": "p-Chip Cloud API service application",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
