@@ -20,6 +20,8 @@ datasource db {
 model User {
   id                  String       @id @default(cuid())
   uid                 String       @unique //Auth uid from firebase
+  name                String
+  email               String
   defaultTenantUserId String?      @unique // Foreign key to primary TenantUser
   defaultTenantUser   TenantUser?  @relation(fields: [defaultTenantUserId], references: [id])
   createdAt           DateTime     @default(now())
@@ -41,13 +43,12 @@ model Tenant {
   createdPublishedDocuments PublishedDocument[] @relation("TenantToPublishedDocument")
   ownedPublishedDocuments   PublishedDocument[] @relation("OwnerToPublishedDocument")
   mticReaders               MTICReader[]        @relation("TenantToMTICReader")
+  tenantOrgs                TenantOrg[]         @relation("TenantToTenantOrg")
 }
 
 //Users that have been granted access to tenant resources and data
 model TenantUser {
   id            String          @id @default(cuid())
-  name          String
-  email         String
   userId        String?
   user          User?           @relation("UserToTenantUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: Cascade)
   tenantId      String
@@ -74,8 +75,10 @@ enum Role {
 model TenantOrg {
   id             String          @id @default(cuid())
   name           String
-  parentId       String
-  parent         TenantOrg       @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  parentId       String?
+  parent         TenantOrg?      @relation("ParentToChild", fields: [parentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tenantId       String
+  tenant         Tenant          @relation("TenantToTenantOrg", fields: [tenantId], references: [id])
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   subOrgs        TenantOrg[]     @relation("ParentToChild")
@@ -108,8 +111,8 @@ enum Permission {
 model DocumentConfig {
   id                String             @id @default(cuid())
   name              String
-  templateFields    Json               @default("[{}]") //Fields where the value is it in the document object. //Example: Product Name, SKU, Description, Image, Etc.
-  documentFields    Json               @default("[{}]") //Fields where the value will is set in tracked documents //Example: Created Date, Created Location, Batch Number, Etc.
+  description       String
+  fieldConfig       Json               @default("[{}]") //Fields where the value is it in the document object. //Example: Product Name, SKU, Description, Image, Etc.
   tenantId          String
   tenant            Tenant             @relation("TenantToDocumentConfig", fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt         DateTime           @default(now())
@@ -117,17 +120,27 @@ model DocumentConfig {
   documentTemplates DocumentTemplate[] @relation("DocumentConfigToDocumentTemplate")
 }
 
+enum FieldTypes {
+  shortText
+  longText
+  dateTime
+  select
+  checkBox
+}
+
 //A prefilled template that follows the rules defined by the document config file. The config file defines the fields of the document, the rules of how they must be completed the templates are the documents completed based on those rules
 model DocumentTemplate {
-  id               String         @id @default(cuid())
-  name             String
-  documentConfigId String
-  documentConfig   DocumentConfig @relation("DocumentConfigToDocumentTemplate", fields: [documentConfigId], references: [id], onDelete: Cascade)
-  templateFields   Json           @default("[{}]")
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  tenantOrgDocs    TenantOrgDoc[] @relation("DocumentTemplateToTenantOrgDoc")
-  documents        Document[]     @relation("DocumentToDocument")
+  id                  String         @id @default(cuid())
+  name                String
+  description         String
+  image               String?
+  documentConfigId    String
+  documentConfig      DocumentConfig @relation("DocumentConfigToDocumentTemplate", fields: [documentConfigId], references: [id], onDelete: Cascade)
+  templateFieldConfig Json           @default("{}")
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  tenantOrgDocs       TenantOrgDoc[] @relation("DocumentTemplateToTenantOrgDoc")
+  documents           Document[]     @relation("DocumentToDocument")
 }
 
 //Document templates can be assigned to one or more tenant organizations. This allows a tenant to control which departments, locations, or other classification where users are able to create specific documents
@@ -151,7 +164,7 @@ model Document {
   documentTemplate   DocumentTemplate @relation("DocumentToDocument", fields: [documentTemplateId], references: [id], onDelete: Cascade)
   tenantOrgId        String
   tenantOrg          TenantOrg        @relation("TenantOrgToDocument", fields: [tenantOrgId], references: [id], onDelete: Cascade)
-  documentFields     Json             @default("[{}]")
+  documentFields     Json             @default("{}")
   createdById        String
   createdBy          TenantUser       @relation("TenantOrgUserToDocument", fields: [createdById], references: [id], onDelete: NoAction)
   createdAt          DateTime         @default(now())

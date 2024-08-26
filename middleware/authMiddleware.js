@@ -16,6 +16,8 @@ const authMiddleware = async (req, res, next) => {
       // Authenticate the token with Firebase
       const decodedToken = await admin.auth().verifyIdToken(token);
 
+      console.log("Decoded token", decodedToken);
+
       const { uid, customClaims } = decodedToken;
 
       if (!customClaims) {
@@ -50,6 +52,7 @@ const authMiddleware = async (req, res, next) => {
 
         // Construct new custom claims
         const newCustomClaims = {
+          id: user.id,
           tenantId: user.defaultTenantUser.tenantId,
           tenantUserId: user.defaultTenantUser.id,
           role: user.defaultTenantUser.role,
@@ -58,6 +61,8 @@ const authMiddleware = async (req, res, next) => {
             permission: orgUser.permission,
           })),
         };
+
+        console.log("New Custom Claims", newCustomClaims);
 
         // Set custom claims on Firebase token
         await admin
