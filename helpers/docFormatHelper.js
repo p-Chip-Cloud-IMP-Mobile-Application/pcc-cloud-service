@@ -16,6 +16,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
 
   // Helper function to check if a value is a valid dateTime
   const isValidDateTime = (value) => {
+    console.log("value", value);
     return !isNaN(Date.parse(value));
   };
 

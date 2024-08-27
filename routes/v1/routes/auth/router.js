@@ -26,7 +26,6 @@ router.post("/refresh-token", async (req, res) => {
           id: true,
           uid: true,
           defaultTenantUser: {
-            where: { isActive: true },
             select: {
               id: true,
               tenantId: true,
@@ -38,6 +37,9 @@ router.post("/refresh-token", async (req, res) => {
                 },
               },
             },
+            where: {
+              isActive: true,
+            },
           },
         },
       });
@@ -47,6 +49,8 @@ router.post("/refresh-token", async (req, res) => {
           error: "User does not have access to an active tenant.",
         });
       }
+
+      console.log("User", user);
 
       // Construct new custom claims
       const newCustomClaims = {
@@ -59,6 +63,8 @@ router.post("/refresh-token", async (req, res) => {
           permission: orgUser.permission,
         })),
       };
+
+      console.log("Custom claims", newCustomClaims);
 
       try {
         // Set custom claims on Firebase token
@@ -220,8 +226,6 @@ router.post("/register", async (req, res) => {
 });
 
 //A user want to change their current tenant user profile to another available user profile
-router.post("/exchange-token", async (req, res) => {
-  
-});
+router.post("/exchange-token", async (req, res) => {});
 
 module.exports = router;

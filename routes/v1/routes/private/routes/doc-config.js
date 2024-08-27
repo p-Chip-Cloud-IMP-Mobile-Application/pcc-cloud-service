@@ -38,7 +38,9 @@ router.get("/:id", async (req, res, next) => {
 });
 
 router.post("/", async (req, res, next) => {
-  const { tenantId, name, description, fieldConfig } = req.body;
+  const { tenantId } = req.customClaims;
+  console.log("Tenant Id", tenantId)
+  const { name, description, fieldConfig } = req.body;
   console.log("Request Body", req.body);
 
   if (!tenantId || !name || !description || !fieldConfig) {

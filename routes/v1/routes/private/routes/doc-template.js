@@ -46,9 +46,16 @@ router.get("/:id", async (req, res, next) => {
 });
 
 router.post("/", async (req, res, next) => {
+  const { tenantId } = req.customClaims;
   const { documentConfigId, name, description, image, templateFieldValues } =
     req.body;
-  if ((!documentConfigId, !name, !description, !templateFieldValues)) {
+  if (
+    !tenantId ||
+    !documentConfigId ||
+    !name ||
+    !description ||
+    !templateFieldValues
+  ) {
     return res.status(400).json({ error: "Missing required parameters" });
   }
   try {
@@ -86,6 +93,7 @@ router.post("/", async (req, res, next) => {
         image: image,
         documentConfigId: docConfig.id,
         templateFieldConfig: docTemplateConfigJson,
+        tenantId: tenantId,
       },
     });
 
