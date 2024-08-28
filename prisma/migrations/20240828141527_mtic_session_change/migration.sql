@@ -1,0 +1,25 @@
+-- AlterTable
+ALTER TABLE "MTICLog" ADD COLUMN     "mticSessionId" TEXT,
+ALTER COLUMN "mticReaderId" DROP NOT NULL,
+ALTER COLUMN "lat" DROP NOT NULL,
+ALTER COLUMN "lon" DROP NOT NULL;
+
+-- CreateTable
+CREATE TABLE "MTICSession" (
+    "id" TEXT NOT NULL,
+    "mticReaderId" TEXT NOT NULL,
+    "lat" DECIMAL(65,30) NOT NULL,
+    "lon" DECIMAL(65,30) NOT NULL,
+    "startDateTime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDateTime" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MTICSession_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "MTICLog" ADD CONSTRAINT "MTICLog_mticSessionId_fkey" FOREIGN KEY ("mticSessionId") REFERENCES "MTICSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MTICSession" ADD CONSTRAINT "MTICSession_mticReaderId_fkey" FOREIGN KEY ("mticReaderId") REFERENCES "MTICReader"("id") ON DELETE CASCADE ON UPDATE CASCADE;
