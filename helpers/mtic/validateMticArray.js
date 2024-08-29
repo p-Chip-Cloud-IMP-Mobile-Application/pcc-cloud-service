@@ -16,12 +16,12 @@ const validateMticArray = (mticArray) => {
         message: "Each item in mtic array must have a string 'id' property",
       };
     }
-    if (!item.hasOwnProperty("uid") || typeof item.uid !== "string") {
-      return {
-        isValid: false,
-        message: "Each item in mtic array must have a string 'uid' property",
-      };
-    }
+    //if (!item.hasOwnProperty("uid") || typeof item.uid !== "string") {
+    //return {
+    //isValid: false,
+    //message: "Each item in mtic array must have a string 'uid' property",
+    //};
+    //}
   }
 
   return { isValid: true };

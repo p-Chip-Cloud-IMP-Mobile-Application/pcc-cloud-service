@@ -1,7 +1,10 @@
 const prisma = require("../../config/prisma");
 
 const validateMticReader = async (mticReaderId, tenantId) => {
-  let mticReader;
+  let mticReader = null;
+
+  console.log("Mtic reader", mticReaderId);
+  console.log("Tenant", tenantId);
 
   try {
     const existingMticReader = await prisma.mTICReader.findUnique({
@@ -11,21 +14,21 @@ const validateMticReader = async (mticReaderId, tenantId) => {
     });
 
     if (!existingMticReader) {
-      const newMticReader = await prisma.mTICReader.create({
+      mticReader = await prisma.mTICReader.create({
         data: {
           id: mticReaderId,
           tenantId: tenantId,
           isActive: true,
         },
       });
-      mticReader = newMticReader;
+    } else {
+      mticReader = existingMticReader;
     }
-
-    mticReader = existingMticReader;
   } catch (error) {
     console.log(error);
-    return mticReader;
   }
+
+  return mticReader;
 };
 
 module.exports = validateMticReader;

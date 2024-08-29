@@ -185,26 +185,8 @@ model MTIC {
   uid                String              @default(cuid()) //A universally unique id that is associated with the tracked document. This unique id cannot be changed.
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  mticLogs           MTICLog[]           @relation("MTICtoMTICLog")
   publishedDocuments PublishedDocument[] @relation("MTICToPublishedDocument")
   mticDocuments      MTICDocument[]      @relation("MTICToMTICDocument")
-}
-
-//Micro Transponder Identify Chip logs store metadata of locale data for every registred scan of a microtransonder tag. This includes device, time and location data
-model MTICLog {
-  id            String         @id @default(cuid())
-  mticId        String?
-  mtic          MTIC?          @relation("MTICtoMTICLog", fields: [mticId], references: [id], onDelete: NoAction)
-  mticSessionId String?
-  mticSession   MTICSession?   @relation("MTICSessionToMTICLog", fields: [mticSessionId], references: [id], onDelete: Cascade)
-  mticReaderId  String?
-  mticReader    MTICReader?    @relation("MTICReaderToMTICLog", fields: [mticReaderId], references: [id], onDelete: NoAction)
-  lat           Decimal?
-  lon           Decimal?
-  event         Event          @default(create)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  mticDocuments MTICDocument[] @relation("MTICLogToMTICDocument")
 }
 
 //A device that is designed to scan and read MTIC's. Each device has a unique serial number which is the id field of the object
@@ -215,7 +197,6 @@ model MTICReader {
   tenant       Tenant?       @relation("TenantToMTICReader", fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  mticLogs     MTICLog[]     @relation("MTICReaderToMTICLog")
   mticSessions MTICSession[] @relation("MTICReaderToMTICSession")
 }
 
@@ -231,7 +212,6 @@ model MTICSession {
   endDateTime   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  mticLogs      MTICLog[]      @relation("MTICSessionToMTICLog")
   mticDocuments MTICDocument[] @relation("MTICSessionToMTICDocument")
 }
 
@@ -240,8 +220,6 @@ model MTICDocument {
   id            String       @id @default(cuid())
   mticId        String?
   mtic          MTIC?        @relation("MTICToMTICDocument", fields: [mticId], references: [id])
-  mticLogId     String? //To be removed and replaced by MTIC Session or Session Activity Log
-  mticLog       MTICLog?     @relation("MTICLogToMTICDocument", fields: [mticLogId], references: [id], onDelete: Cascade, onUpdate: Cascade) //To be removed and replaced by MTIC Session or Session Activity Log
   mticSessionId String?
   mticSession   MTICSession? @relation("MTICSessionToMTICDocument", fields: [mticSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   documentId    String
