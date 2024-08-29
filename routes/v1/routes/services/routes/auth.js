@@ -1,9 +1,220 @@
 const express = require("express");
+const axios = require("axios");
 const router = express.Router();
 const prisma = require("../../../../../config/prisma");
 const prismaErrorHelper = require("../../../../../helpers/prismaErrorHelper");
 const admin = require("../../../../../config/firebase");
 const createResponse = require("../../../../../helpers/createResponse");
+
+/**
+ * @swagger
+ * /authenticate/login:
+ *   post:
+ *     summary: User login
+ *     description: |
+ *       Authenticates a user with their email and password using Firebase Authentication.
+ *       Returns a JWT token if authentication is successful.
+ *     tags:
+ *       - Authentication
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: "The user's email address."
+ *                 example: "api-demo@p-chip.com"
+ *               password:
+ *                 type: string
+ *                 description: "The user's password."
+ *                 example: "api-demo"
+ *     responses:
+ *       200:
+ *         description: "Login successful. Returns a JWT token."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Login successful"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     idToken:
+ *                       type: string
+ *                       description: "The Firebase Auth ID token for the authenticated user."
+ *                       example: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjY5M..."
+ *                     refreshToken:
+ *                       type: string
+ *                       description: "The Firebase Auth refresh token for the authenticated user."
+ *                       example: "AEu4IL0tUwJY...os4pyHCkVQDQHRa"
+ *                     expiresIn:
+ *                       type: string
+ *                       description: "The number of seconds in which the ID token expires."
+ *                       example: "3600"
+ *       400:
+ *         description: "Bad request. Email and password are required."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Email and password are required."
+ *       401:
+ *         description: "Unauthorized. Authentication failed."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized: Login failed"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "AUTH_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "INVALID_PASSWORD"
+ *                     message:
+ *                       type: string
+ *                       example: "Login failed"
+ */
+
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return createResponse(res, 400, "Email and password are required.");
+  }
+
+  try {
+    // Make the request to Firebase Authentication API
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`,
+      {
+        email,
+        password,
+        returnSecureToken: true,
+      }
+    );
+
+    const { idToken } = response.data; // Get the idToken from the response
+
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      console.log("Decoded toen", decodedToken);
+      const { uid } = decodedToken;
+
+      const user = await prisma.user.findUnique({
+        where: { uid: uid },
+        select: {
+          id: true,
+          uid: true,
+          defaultTenantUser: {
+            select: {
+              id: true,
+              tenantId: true,
+              role: true,
+              tenantOrgUser: {
+                select: {
+                  tenantOrgId: true,
+                  permission: true,
+                },
+              },
+            },
+            where: {
+              isActive: true,
+            },
+          },
+        },
+      });
+
+      
+
+      if (!user || !user.defaultTenantUser) {
+        return createResponse(
+          res,
+          404,
+          "User does not have access to an active tenant."
+        );
+      }
+
+      // Construct new custom claims
+      const newCustomClaims = {
+        id: user.id,
+        tenantId: user.defaultTenantUser.tenantId,
+        tenantUserId: user.defaultTenantUser.id,
+        role: user.defaultTenantUser.role,
+        tenantOrgs: user.defaultTenantUser.tenantOrgUser.map((orgUser) => ({
+          tenantOrgId: orgUser.tenantOrgId,
+          permission: orgUser.permission,
+        })),
+      };
+
+      try {
+        // Set custom claims on Firebase token
+        await admin
+          .auth()
+          .setCustomUserClaims(uid, { customClaims: newCustomClaims });
+
+        // Return the response from Firebase to the client with the custom claims
+        return createResponse(res, 200, "Login successful and claims set", {
+          ...response.data,
+          customClaims: newCustomClaims,
+        });
+      } catch (error) {
+        console.error("Error setting custom claims:", error);
+        return createResponse(
+          res,
+          500,
+          "An error occurred while setting custom claims. Please try again later.",
+          null,
+          { code: "CUSTOM_CLAIMS_ERROR", message: error.message }
+        );
+      }
+    } catch (error) {
+      console.error("Error during token verification:", error);
+      return createResponse(res, 401, "Token is invalid or expired.", null, {
+        code: "INVALID_TOKEN",
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    // Handle errors from Firebase and use createResponse to return the error
+    const errorMessage = error.response?.data?.error?.message || "Login failed";
+    const errorCode = error.response?.data?.error?.code || "AUTH_ERROR";
+
+    return createResponse(res, 401, "Unauthorized: Login failed", null, {
+      code: errorCode,
+      message: errorMessage,
+      description: error.response?.data?.error?.message || null,
+    });
+  }
+});
 
 /**
  * @swagger
@@ -148,6 +359,7 @@ router.post("/verify-token", async (req, res) => {
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
+      console.log("Decoded token", decodedToken);
       const { uid } = decodedToken;
 
       const user = await prisma.user.findUnique({

@@ -30,7 +30,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                 data:
  *                   type: object
  *                   properties:
- *                     user_profile:
+ *                     userProfile:
  *                       type: object
  *                       properties:
  *                         id:
@@ -54,7 +54,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             name:
  *                               type: string
  *                               example: "Default Tenant"
- *                         tenant_profile:
+ *                         tenantProfile:
  *                           type: object
  *                           properties:
  *                             id:
@@ -92,7 +92,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                               isActive:
  *                                 type: boolean
  *                                 example: true
- *                     active_tenant_profile:
+ *                     activeTenantProfile:
  *                       type: object
  *                       properties:
  *                         tenant:
@@ -104,7 +104,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             name:
  *                               type: string
  *                               example: "Current Tenant"
- *                         tenant_profile:
+ *                         tenantProfiles:
  *                           type: object
  *                           properties:
  *                             id:
@@ -122,7 +122,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             isActive:
  *                               type: boolean
  *                               example: true
- *                         tenant_organizations:
+ *                         tenantOrganizations:
  *                           type: array
  *                           items:
  *                             type: object
@@ -278,19 +278,19 @@ router.get("/auth-user-details", async (req, res) => {
           id: currentLoggedTenantUser.tenant.id,
           name: currentLoggedTenantUser.tenant.name,
         },
-        tenant_profile: {
+        tenantProfile: {
           id: currentLoggedTenantUser.id,
           tenantId: currentLoggedTenantUser.tenant.id,
           tenantName: currentLoggedTenantUser.tenant.name,
           role: currentLoggedTenantUser.role,
           isActive: currentLoggedTenantUser.isActive,
         },
-        tenant_organizations: profileOrganizations,
+        tenantOrganizations: profileOrganizations,
       };
 
       const response = {
-        user_profile: userProfile,
-        active_tenant_profile: activeTenantProfile,
+        userProfile: userProfile,
+        activeTenantUserProfile: activeTenantProfile,
       };
 
       console.log("User found", user);
