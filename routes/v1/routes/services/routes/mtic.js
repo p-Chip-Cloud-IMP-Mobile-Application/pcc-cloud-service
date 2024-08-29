@@ -98,8 +98,6 @@ router.put("/end-mtic-session/:mticSessionId", async (req, res, next) => {
   }
 });
 
-
-
 router.post("/mtic-documents", async (req, res, next) => {
   const { tenantId, tenantUserId } = req.customClaims;
   const { mticSessionId, documentId, mtics } = req.body;
@@ -201,6 +199,28 @@ router.post("/mtic-documents", async (req, res, next) => {
       "Internal server error. Please try again later",
       null,
       error
+    );
+  }
+});
+
+router.get("/mtic-documents/:mticId", async (req, res, next) => {
+  const { mticId } = req.params;
+
+  try {
+    const mticDocument = await prisma.mTICDocument.findMany({
+      where: {
+        mticId: mticId,
+      },
+    });
+
+    if(!mticDocument) {
+      
+    }
+  } catch (error) {
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later"
     );
   }
 });

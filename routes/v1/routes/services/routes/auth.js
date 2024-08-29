@@ -5,6 +5,128 @@ const prismaErrorHelper = require("../../../../../helpers/prismaErrorHelper");
 const admin = require("../../../../../config/firebase");
 const createResponse = require("../../../../../helpers/createResponse");
 
+/**
+ * @swagger
+ * /verify-token:
+ *   post:
+ *     summary: Verify the provided authentication token
+ *     description: Verifies the authentication token provided in the request header. If the token is valid, it returns the associated user profile.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               Authorization:
+ *                 type: string
+ *                 description: Bearer token
+ *                 example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Token is valid and user is found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Token is valid and user is found
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userProfile:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "user_12345"
+ *                         uid:
+ *                           type: string
+ *                           example: "UID12345"
+ *                         name:
+ *                           type: string
+ *                           example: "John Doe"
+ *                         email:
+ *                           type: string
+ *                           example: "john.doe@example.com"
+ *       401:
+ *         description: Unauthorized: Missing or invalid authorization token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Unauthorized: Missing authorization token.
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: MISSING_TOKEN
+ *                     description:
+ *                       type: string
+ *                       example: Authorization header is required to access this resource.
+ *                     message:
+ *                       type: string
+ *                       example: No token provided in the request header.
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: User not found
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: USER_NOT_FOUND
+ *                     description:
+ *                       type: string
+ *                       example: No user found with the provided UID.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 message:
+ *                   type: string
+ *                   example: Internal Server Error
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: INTERNAL_SERVER_ERROR
+ *                     description:
+ *                       type: string
+ *                       example: Unexpected error occurred.
+ */
+
 router.post("/verify-token", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -41,7 +163,7 @@ router.post("/verify-token", async (req, res) => {
       }
 
       const data = {
-        user_profile: {
+        userProfile: {
           id: user.id,
           uid: user.uid,
           name: user.name,
