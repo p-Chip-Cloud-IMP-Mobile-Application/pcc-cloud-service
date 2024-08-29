@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const documentFieldSchema = require("./swagger/schemas/documentFieldSchema.json");
 
 // Read the content of the Markdown file
 const swaggerDescriptionPath = path.resolve(
@@ -226,6 +227,7 @@ const swaggerConfig = {
             },
           },
         },
+        "Document Field Schema": documentFieldSchema,
       },
     },
     security: [

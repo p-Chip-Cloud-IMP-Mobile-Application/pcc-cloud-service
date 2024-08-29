@@ -51,6 +51,22 @@ This documentation provides detailed information about the p-Chip Cloud Service 
 </details>
 
 <details>
+  <summary><strong>How to use these API's</strong></summary>
+
+  - **authenticate/login**: A demo account has been created with a default username, password, tenant and all other necessary related information to test the url routes. First login and then set the returned idToken in the authentication header. This is required for all other routes.
+  - **user-requests/auth-user-details**: This route shows you the structure of the information you can store locally in your application. It consists of the users information, their default tenant, current logged in tenant (stored in the JWT token and used for access to all other routes).
+  - **document-requests/org-documents**: The first step after logging in, your application should look for all documents that have been created that the user has access to view. This route has a default pagination of 25 records. **Note**: Documents are not the same as MTIC Documents. Documents can have multiple MTIC documents associated with them. This should be your default query, because it returns references to all the data the application user should need to access, while reducing server request volume.
+
+  Available Actions
+  - **Search by scanning an MTIC**: To search using an MTIC tag:
+    - **/mtic-requests/start-mtic-session**: This route should be called when a user wants to scan and MTIC tag. The route returns an MTIC session ID. The MTIC session stores the unique identification of the MTIC Reader that is currently connected to your device and your geographical coordinates (lat: latitude, lon: longitude). When creating a session, the server performs the following actions:
+      - Searches to see if the MTIC Reader has been registered on the p-Chip Cloud platform.
+        - If it has not been registered, it will automatically register the MTIC Reader and assign it to the current Active Tenant stored in the authenticated user's custom claims.
+        - Checks to see if the MTIC reader has been deactivated by the Tenant to which the device was initially registered.
+
+</details>
+
+<details>
   <summary><strong>Contact Information</strong></summary>
 
   If you have any questions, please contact our support team at [support@p-chip.com](mailto:support@p-chip.com).

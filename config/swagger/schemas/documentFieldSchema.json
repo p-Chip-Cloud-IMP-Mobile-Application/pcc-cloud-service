@@ -1,0 +1,140 @@
+{
+  "type": "object",
+  "properties": {
+    "templateFields": {
+      "type": "array",
+      "description": "Defines the fields that are pre-filled in a document template.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "A unique identifier for the field.",
+            "example": "productName"
+          },
+          "label": {
+            "type": "string",
+            "description": "The label or name of the field that is displayed to the user.",
+            "example": "Product Name"
+          },
+          "fieldType": {
+            "type": "string",
+            "description": "The type of field, which dictates how the data is entered or selected.",
+            "enum": [
+              "shortText",
+              "longText",
+              "dateTime",
+              "select",
+              "file",
+              "image",
+              "checkBox"
+            ],
+            "example": "shortText"
+          },
+          "maxChar": {
+            "type": "integer",
+            "description": "The maximum number of characters allowed for this field.",
+            "example": 100
+          },
+          "minChar": {
+            "type": "integer",
+            "description": "The minimum number of characters required for this field.",
+            "example": 1
+          },
+          "isRequired": {
+            "type": "boolean",
+            "description": "Indicates whether this field is mandatory.",
+            "example": true
+          },
+          "options": {
+            "type": "array",
+            "description": "A list of selectable options for fields of type 'select'.",
+            "items": {
+              "type": "string",
+              "example": "Option 1"
+            },
+            "example": ["Option 1", "Option 2"]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "fieldType",
+          "maxChar",
+          "minChar",
+          "isRequired"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "documentFields": {
+      "type": "array",
+      "description": "Defines the fields that are filled out when a document is created.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "A unique identifier for the field.",
+            "example": "batchNumber"
+          },
+          "label": {
+            "type": "string",
+            "description": "The label or name of the field that is displayed to the user.",
+            "example": "Batch Number"
+          },
+          "fieldType": {
+            "type": "string",
+            "description": "The type of field, which dictates how the data is entered or selected.",
+            "enum": [
+              "shortText",
+              "longText",
+              "dateTime",
+              "select",
+              "file",
+              "image",
+              "checkBox"
+            ],
+            "example": "longText"
+          },
+          "maxChar": {
+            "type": "integer",
+            "description": "The maximum number of characters allowed for this field.",
+            "example": 255
+          },
+          "minChar": {
+            "type": "integer",
+            "description": "The minimum number of characters required for this field.",
+            "example": 1
+          },
+          "isRequired": {
+            "type": "boolean",
+            "description": "Indicates whether this field is mandatory.",
+            "example": true
+          },
+          "options": {
+            "type": "array",
+            "description": "A list of selectable options for fields of type 'select'.",
+            "items": {
+              "type": "string",
+              "example": "Option A"
+            },
+            "example": ["Option A", "Option B"]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "fieldType",
+          "maxChar",
+          "minChar",
+          "isRequired"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["templateFields", "documentFields"],
+  "additionalProperties": false,
+  "description": "This schema defines the structure and validation rules for fields in document configuration files."
+}

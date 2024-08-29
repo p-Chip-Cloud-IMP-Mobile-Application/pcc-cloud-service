@@ -4,6 +4,7 @@ const prisma = require("../../../../../config/prisma");
 const createResponse = require("../../../../../helpers/createResponse");
 const validateMticReader = require("../../../../../helpers/mtic/validateMticReader");
 const validateMticArray = require("../../../../../helpers/mtic/validateMticArray");
+const { validateHeaderValue } = require("http");
 
 /**
  * @swagger
@@ -687,6 +688,10 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
       where: {
         mticId: mticId,
       },
+      select: {
+        mtic: true,
+        document: true,
+      },
     });
 
     if (!mticDocuments || mticDocuments.length === 0) {
@@ -720,6 +725,92 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
       {
         code: "DATABASE_ERROR",
         description: "An error occurred while retrieving MTIC documents.",
+        details: error.message,
+      }
+    );
+  }
+});
+
+router.get("/mtic/:id", async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const mtic = await prisma.mTIC.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        id: true,
+        uid: true,
+        mticDocuments: {
+          select: {
+            id: true,
+            document: {
+              select: {
+                documentFields: true,
+                documentTemplate: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    image: true,
+                    templateFieldConfig: true,
+                    documentConfig: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const data = {
+      id: mtic.id,
+      uid: mtic.uid,
+      documents: mtic.mticDocuments.map((doc) => ({
+        id: doc.id,
+        documentTemplate: {
+          id: doc.document.documentTemplate.id,
+          name: doc.document.documentTemplate.name,
+          description: doc.document.documentTemplate.description,
+          image: doc.document.documentTemplate.image,
+        },
+        headerFields:
+          doc.document.documentTemplate.templateFieldConfig.templateFields.map(
+            (field) => ({
+              key: field.key,
+              type: field.type,
+              label: field.label,
+              value: field.value,
+            })
+          ),
+        bodyFields:
+          doc.document.documentTemplate.templateFieldConfig.documentFields.map(
+            (field) => ({
+              key: field.key,
+              type: field.type,
+              label: field.label,
+              value: field.value,
+            })
+          ),
+      })),
+    };
+
+    console.log("Data", data);
+    console.log("template data", data.documents);
+
+    return createResponse(res, 200, "Record found", data, null);
+  } catch (error) {
+    console.error("Error processing MTIC documents:", error);
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description:
+          "An unexpected error occurred while processing MTIC documents.",
         details: error.message,
       }
     );
