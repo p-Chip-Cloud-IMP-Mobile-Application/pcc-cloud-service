@@ -7,10 +7,12 @@ const createResponse = require("../../../../../helpers/createResponse");
 
 /**
  * @swagger
- * /verify-token:
+ * /authenticate/verify-token:
  *   post:
  *     summary: Verify the provided authentication token
- *     description: Verifies the authentication token provided in the request header. If the token is valid, it returns the associated user profile.
+ *     description: >
+ *       Verifies the authentication token provided in the request header.
+ *       If the token is valid, it returns the associated user profile.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -22,11 +24,11 @@ const createResponse = require("../../../../../helpers/createResponse");
  *             properties:
  *               Authorization:
  *                 type: string
- *                 description: Bearer token
+ *                 description: "Bearer token"
  *                 example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
- *         description: Token is valid and user is found
+ *         description: "Token is valid and user is found"
  *         content:
  *           application/json:
  *             schema:
@@ -34,10 +36,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *               properties:
  *                 status:
  *                   type: string
- *                   example: success
+ *                   example: "success"
  *                 message:
  *                   type: string
- *                   example: Token is valid and user is found
+ *                   example: "Token is valid and user is found"
  *                 data:
  *                   type: object
  *                   properties:
@@ -57,7 +59,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                           type: string
  *                           example: "john.doe@example.com"
  *       401:
- *         description: Unauthorized: Missing or invalid authorization token
+ *         description: "Unauthorized: Missing or invalid authorization token"
  *         content:
  *           application/json:
  *             schema:
@@ -65,24 +67,24 @@ const createResponse = require("../../../../../helpers/createResponse");
  *               properties:
  *                 status:
  *                   type: string
- *                   example: error
+ *                   example: "error"
  *                 message:
  *                   type: string
- *                   example: Unauthorized: Missing authorization token.
+ *                   example: "Unauthorized: Missing authorization token."
  *                 error:
  *                   type: object
  *                   properties:
  *                     code:
  *                       type: string
- *                       example: MISSING_TOKEN
+ *                       example: "MISSING_TOKEN"
  *                     description:
  *                       type: string
- *                       example: Authorization header is required to access this resource.
+ *                       example: "Authorization header is required to access this resource."
  *                     message:
  *                       type: string
- *                       example: No token provided in the request header.
+ *                       example: "No token provided in the request header."
  *       404:
- *         description: User not found
+ *         description: "User not found"
  *         content:
  *           application/json:
  *             schema:
@@ -90,21 +92,21 @@ const createResponse = require("../../../../../helpers/createResponse");
  *               properties:
  *                 status:
  *                   type: string
- *                   example: error
+ *                   example: "error"
  *                 message:
  *                   type: string
- *                   example: User not found
+ *                   example: "User not found"
  *                 error:
  *                   type: object
  *                   properties:
  *                     code:
  *                       type: string
- *                       example: USER_NOT_FOUND
+ *                       example: "USER_NOT_FOUND"
  *                     description:
  *                       type: string
- *                       example: No user found with the provided UID.
+ *                       example: "No user found with the provided UID."
  *       500:
- *         description: Internal Server Error
+ *         description: "Internal Server Error"
  *         content:
  *           application/json:
  *             schema:
@@ -112,19 +114,19 @@ const createResponse = require("../../../../../helpers/createResponse");
  *               properties:
  *                 status:
  *                   type: string
- *                   example: error
+ *                   example: "error"
  *                 message:
  *                   type: string
- *                   example: Internal Server Error
+ *                   example: "Internal Server Error"
  *                 error:
  *                   type: object
  *                   properties:
  *                     code:
  *                       type: string
- *                       example: INTERNAL_SERVER_ERROR
+ *                       example: "INTERNAL_SERVER_ERROR"
  *                     description:
  *                       type: string
- *                       example: Unexpected error occurred.
+ *                       example: "Unexpected error occurred."
  */
 
 router.post("/verify-token", async (req, res) => {
@@ -196,6 +198,148 @@ router.post("/verify-token", async (req, res) => {
     });
   }
 });
+
+/**
+ * @swagger
+ * /authenticate/update-claims/{tenantUserId}:
+ *   post:
+ *     summary: Update custom claims for a tenant user
+ *     description: >
+ *       This endpoint updates the custom claims associated with a tenant user.
+ *       The request requires a valid Bearer token in the Authorization header.
+ *     tags:
+ *       - Claims
+ *     parameters:
+ *       - in: path
+ *         name: tenantUserId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the tenant user whose claims are being updated.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               Authorization:
+ *                 type: string
+ *                 description: "Bearer token"
+ *                 example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: "Custom claims have been updated. Please refresh your token"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Custom claims have been updated. Please refresh your token"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "user_12345"
+ *                     tenantId:
+ *                       type: string
+ *                       example: "tenant_67890"
+ *                     tenantUserId:
+ *                       type: string
+ *                       example: "tenantUser_12345"
+ *                     role:
+ *                       type: string
+ *                       example: "admin"
+ *                     tenantOrgs:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "org_123"
+ *                           name:
+ *                             type: string
+ *                             example: "Tenant Organization"
+ *                           permission:
+ *                             type: string
+ *                             example: "read-write"
+ *       401:
+ *         description: "Unauthorized: Missing or invalid authorization token"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Unauthorized: Missing authorization token."
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "MISSING_TOKEN"
+ *                     description:
+ *                       type: string
+ *                       example: "Authorization header is required to access this resource."
+ *                     message:
+ *                       type: string
+ *                       example: "No token provided in the request header."
+ *       404:
+ *         description: "User not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "USER_NOT_FOUND"
+ *                     description:
+ *                       type: string
+ *                       example: "No user found with the provided token."
+ *       500:
+ *         description: "Internal Server Error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal Server Error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "INTERNAL_SERVER_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "Unexpected error occurred."
+ */
 
 router.post("/update-claims/:tenanerUserId", async (req, res, next) => {
   try {

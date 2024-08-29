@@ -4,7 +4,174 @@ const prisma = require("../../../../../config/prisma");
 const prismaErrorHelper = require("../../../../../helpers/prismaErrorHelper");
 const createResponse = require("../../../../../helpers/createResponse");
 
-// Route to get authenticated user's details including their default tenant and other available tenants
+/**
+ * @swagger
+ * /user-requests/auth-user-details:
+ *   get:
+ *     summary: Get authenticated user's details
+ *     description: >
+ *       Retrieves the authenticated user's profile, including their default tenant,
+ *       other available tenants, and the organizations within the current tenant.
+ *     tags:
+ *       - User
+ *     responses:
+ *       200:
+ *         description: "Request successful"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Request successful"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user_profile:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "user_12345"
+ *                         uid:
+ *                           type: string
+ *                           example: "UID12345"
+ *                         name:
+ *                           type: string
+ *                           example: "John Doe"
+ *                         email:
+ *                           type: string
+ *                           example: "john.doe@example.com"
+ *                         tenant:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "tenant_67890"
+ *                             name:
+ *                               type: string
+ *                               example: "Default Tenant"
+ *                         tenant_profile:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "tenantUser_12345"
+ *                             tenant_id:
+ *                               type: string
+ *                               example: "tenant_67890"
+ *                             tenant_name:
+ *                               type: string
+ *                               example: "Default Tenant"
+ *                             role:
+ *                               type: string
+ *                               example: "admin"
+ *                             isActive:
+ *                               type: boolean
+ *                               example: true
+ *                         other_tenant_profiles:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "tenantUser_67890"
+ *                               tenant_id:
+ *                                 type: string
+ *                                 example: "tenant_23456"
+ *                               tenant_name:
+ *                                 type: string
+ *                                 example: "Other Tenant"
+ *                               role:
+ *                                 type: string
+ *                                 example: "user"
+ *                               isActive:
+ *                                 type: boolean
+ *                                 example: true
+ *                     active_tenant_profile:
+ *                       type: object
+ *                       properties:
+ *                         tenant:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "tenant_67890"
+ *                             name:
+ *                               type: string
+ *                               example: "Current Tenant"
+ *                         tenant_profile:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "tenantUser_67890"
+ *                             tenant_id:
+ *                               type: string
+ *                               example: "tenant_67890"
+ *                             tenant_name:
+ *                               type: string
+ *                               example: "Current Tenant"
+ *                             role:
+ *                               type: string
+ *                               example: "admin"
+ *                             isActive:
+ *                               type: boolean
+ *                               example: true
+ *                         tenant_organizations:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "org_123"
+ *                               name:
+ *                                 type: string
+ *                                 example: "Organization Name"
+ *                               role:
+ *                                 type: string
+ *                                 example: "read-write"
+ *       400:
+ *         description: "Missing or malformed claims"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Missing or malformed claims"
+ *       404:
+ *         description: "User or current tenant user not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "User not found"
+ *       500:
+ *         description: "Uncaught error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Uncaught Error"
+ */
+
 router.get("/auth-user-details", async (req, res) => {
   const { id, tenantId, tenantUserId } = req.customClaims;
 
@@ -135,7 +302,134 @@ router.get("/auth-user-details", async (req, res) => {
   }
 });
 
-//Returns the most recent documents created that an authenticated users permissions and group assignments allow them access to
+/**
+ * @swagger
+ * /user-requests/tenant-user-documents:
+ *   get:
+ *     summary: Get recent documents accessible to the authenticated user
+ *     description: >
+ *       Returns the most recent documents created that an authenticated user's permissions
+ *       and group assignments allow them access to. The results are paginated.
+ *     tags:
+ *       - Documents
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: The page number to retrieve.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 25
+ *         description: The number of documents to retrieve per page.
+ *     responses:
+ *       200:
+ *         description: "Resources found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "doc_12345"
+ *                       uid:
+ *                         type: string
+ *                         example: "DOC-2023-001"
+ *                       image:
+ *                         type: string
+ *                         example: "https://example.com/image.png"
+ *                       name:
+ *                         type: string
+ *                         example: "Document Name"
+ *                       description:
+ *                         type: string
+ *                         example: "A description of the document."
+ *                       type:
+ *                         type: string
+ *                         example: "Invoice"
+ *                       documentFields:
+ *                         type: object
+ *                         properties:
+ *                           documentHeader:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "header_1"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Header Label"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "text"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "Header Value"
+ *                           documentBody:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "body_1"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Body Label"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "text"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "Body Value"
+ *                       createdDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2023-08-01T12:34:56Z"
+ *                       createdOrganziation:
+ *                         type: string
+ *                         example: "Organization Name"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     totalDocuments:
+ *                       type: integer
+ *                       example: 100
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 4
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     perPage:
+ *                       type: integer
+ *                       example: 25
+ *       500:
+ *         description: "Uncaught Error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Uncaught Error"
+ */
+
 router.get("/tenant-user-documents", async (req, res, next) => {
   const customClaims = req.customClaims;
   const { tenantId, tenantUserId, role, tenantOrgs } = customClaims;
@@ -273,6 +567,5 @@ router.get("/tenant-user-documents", async (req, res, next) => {
     return createResponse(res, 500, "Uncaught Error", null, error);
   }
 });
-
 
 module.exports = router;

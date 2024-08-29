@@ -1,4 +1,3 @@
-// swaggerConfig.js
 const swaggerConfig = {
   definition: {
     openapi: "3.1.0",
@@ -19,12 +18,16 @@ const swaggerConfig = {
     },
     servers: [
       {
-        url: "http://localhost:3000",
-        url: "https://pcc-cloud-service.azurewebsites.net/",
+        url: "http://localhost:3000/api/v1/services",
+        description: "Local development server",
+      },
+      {
+        url: "https://your-production-server.com/api/v1/services",
+        description: "Production server",
       },
     ],
   },
-  apis: ["./routes/api/v1/services/auth/*.js"],
+  apis: ["./routes/v1/routes/services/routes/*.js"], // files containing annotations as above
 };
 
 module.exports = swaggerConfig;

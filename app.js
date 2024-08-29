@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 
-const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const swaggerConfig = require("./config/swagger");
 
@@ -13,15 +13,26 @@ const router = require("./router");
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize Swagger-jsdoc
-const specs = swaggerJsdoc(swaggerConfig);
+// Swagger setup
+const swaggerOptions = {
+  swaggerDefinition: {
+    myapi: "3.0.0",
+    info: {
+      title: "My API",
+      version: "1.0.0",
+      description: "API documentation",
+    },
+    servers: [
+      {
+        url: "http://localhost:3000",
+      },
+    ],
+  },
+  apis: ["./routes/v1/routes/services/routes/*.js"], // files containing annotations as above
+};
 
-// Setup Swagger UI
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(specs, { explorer: true })
-);
+const swaggerDocs = swaggerJsDoc(swaggerConfig);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use("/api", router);
 

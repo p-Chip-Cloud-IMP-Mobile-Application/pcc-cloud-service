@@ -4,6 +4,7 @@ const prisma = require("../../../../../config/prisma");
 const prismaErrorHelper = require("../../../../../helpers/prismaErrorHelper");
 const createResponse = require("../../../../../helpers/createResponse");
 
+//Returns the doucments that have been created by a tenant
 router.get("/documents/:tenantOrgId", async (req, res, next) => {
   const { tenantOrgId } = req.params;
 

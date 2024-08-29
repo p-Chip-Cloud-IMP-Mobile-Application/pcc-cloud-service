@@ -6,6 +6,130 @@ const docFormatHelper = require("../../../../../helpers/docFormatHelper");
 const createResponse = require("../../../../../helpers/createResponse");
 const validateMticReader = require("../../../../../helpers/mtic/validateMticReader");
 
+/**
+ * @swagger
+ * /document-requests/org-documents:
+ *   get:
+ *     summary: Get documents for a specific organization
+ *     description: >
+ *       Retrieves documents associated with a specific tenant organization.
+ *       The results are paginated.
+ *     tags:
+ *       - Documents
+ *     parameters:
+ *       - in: query
+ *         name: tenantOrgId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "org_12345"
+ *         description: The ID of the tenant organization whose documents are being retrieved.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: The page number to retrieve.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 25
+ *         description: The number of documents to retrieve per page.
+ *     responses:
+ *       200:
+ *         description: "Documents retrieved successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Documents retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     documents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "doc_12345"
+ *                           uid:
+ *                             type: string
+ *                             example: "DOC-2023-001"
+ *                           name:
+ *                             type: string
+ *                             example: "Document Name"
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2023-08-01T12:34:56Z"
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2023-08-01T12:34:56Z"
+ *                           tenantOrgId:
+ *                             type: string
+ *                             example: "org_12345"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         totalDocuments:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 4
+ *                         currentPage:
+ *                           type: integer
+ *                           example: 1
+ *                         perPage:
+ *                           type: integer
+ *                           example: 25
+ *       400:
+ *         description: "Bad Request - Missing or invalid tenantOrgId"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Missing or invalid tenantOrgId"
+ *       500:
+ *         description: "Database error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Database error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while retrieving documents."
+ */
+
 router.get("/org-documents", async (req, res, next) => {
   const { tenantOrgId } = req.query;
 
@@ -52,6 +176,159 @@ router.get("/org-documents", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /document-requests/org-document-templates:
+ *   get:
+ *     summary: Get document templates for a specific organization
+ *     description: >
+ *       Retrieves document templates associated with a specific tenant organization.
+ *       The results are paginated.
+ *     tags:
+ *       - Document Templates
+ *     parameters:
+ *       - in: query
+ *         name: tenantOrgId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "org_12345"
+ *         description: The ID of the tenant organization whose document templates are being retrieved.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: The page number to retrieve.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 25
+ *         description: The number of document templates to retrieve per page.
+ *     responses:
+ *       200:
+ *         description: "Document templates retrieved successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Document templates retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     documents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "docTemplate_12345"
+ *                           name:
+ *                             type: string
+ *                             example: "Document Template Name"
+ *                           description:
+ *                             type: string
+ *                             example: "A description of the document template."
+ *                           headerFields:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "header_1"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Header Label"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "text"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "Header Value"
+ *                           bodyFields:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "body_1"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Body Label"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "text"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "Body Value"
+ *                           documentConfigId:
+ *                             type: string
+ *                             example: "docConfig_12345"
+ *                           documentConfigName:
+ *                             type: string
+ *                             example: "Document Config Name"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         totalDocuments:
+ *                           type: integer
+ *                           example: 100
+ *                         totalPages:
+ *                           type: integer
+ *                           example: 4
+ *                         currentPage:
+ *                           type: integer
+ *                           example: 1
+ *                         perPage:
+ *                           type: integer
+ *                           example: 25
+ *       400:
+ *         description: "Bad Request - Missing or invalid tenantOrgId"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Missing or invalid tenantOrgId"
+ *       500:
+ *         description: "Database error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Database error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while retrieving document templates."
+ */
+
 router.get("/org-document-templates", async (req, res, next) => {
   const { tenantOrgId } = req.query;
 
@@ -80,10 +357,10 @@ router.get("/org-document-templates", async (req, res, next) => {
       id: item.documentTemplateId,
       name: item.documentTemplate.name,
       description: item.documentTemplate.description,
-      header_fields: item.documentTemplate.templateFieldConfig.templateFields,
-      body_fields: item.documentTemplate.templateFieldConfig.documentFields,
-      document_config_id: item.documentTemplate.documentConfig.id,
-      document_config_name: item.documentTemplate.documentConfig.name,
+      headerFields: item.documentTemplate.templateFieldConfig.templateFields,
+      bodyFields: item.documentTemplate.templateFieldConfig.documentFields,
+      documentConfigId: item.documentTemplate.documentConfig.id,
+      documentConfigName: item.documentTemplate.documentConfig.name,
     }));
 
     const totalDocuments = formattedDocumentArray.length;
@@ -109,6 +386,150 @@ router.get("/org-document-templates", async (req, res, next) => {
     });
   }
 });
+
+/**
+ * @swagger
+ * /document-requests/org-document:
+ *   post:
+ *     summary: Create a document for a specific organization
+ *     description: >
+ *       Creates a new document for a specific tenant organization based on the provided document template and field values.
+ *     tags:
+ *       - Documents
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tenant_org_id:
+ *                 type: string
+ *                 example: "org_12345"
+ *                 description: The ID of the tenant organization.
+ *               uid:
+ *                 type: string
+ *                 example: "DOC-2023-001"
+ *                 description: The unique identifier for the document.
+ *               document_data:
+ *                 type: object
+ *                 properties:
+ *                   document_template_id:
+ *                     type: string
+ *                     example: "template_12345"
+ *                     description: The ID of the document template.
+ *                   document_field_values:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         key:
+ *                           type: string
+ *                           example: "field_1"
+ *                         value:
+ *                           type: string
+ *                           example: "Value for field 1"
+ *                     description: Array of key-value pairs representing document field values.
+ *     responses:
+ *       201:
+ *         description: "Successful request"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Succesful request"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "doc_67890"
+ *                     uid:
+ *                       type: string
+ *                       example: "DOC-2023-001"
+ *                     documentTemplateId:
+ *                       type: string
+ *                       example: "template_12345"
+ *                     tenantId:
+ *                       type: string
+ *                       example: "tenant_12345"
+ *                     tenantOrgId:
+ *                       type: string
+ *                       example: "org_12345"
+ *                     documentFields:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           key:
+ *                             type: string
+ *                             example: "field_1"
+ *                           value:
+ *                             type: string
+ *                             example: "Value for field 1"
+ *                     createdById:
+ *                       type: string
+ *                       example: "user_67890"
+ *       400:
+ *         description: "Request body is incomplete or malformed"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Request body is incomplete or malformed"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     example: "document_field_values is required"
+ *       404:
+ *         description: "The requested resource does not exist"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "The requested resource does not exist"
+ *       500:
+ *         description: "Internal server error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while creating the document."
+ */
 
 router.post("/org-document", async (req, res, next) => {
   const { tenantUserId, tenantId } = req.customClaims;
@@ -208,6 +629,138 @@ router.post("/org-document", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /document-requests/document/{id}:
+ *   get:
+ *     summary: Get a specific document by ID
+ *     description: >
+ *       Retrieves a document by its ID, including details about the document template, fields,
+ *       the user who created it, and timestamps for when it was created and last updated.
+ *     tags:
+ *       - Documents
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "doc_12345"
+ *         description: The ID of the document to retrieve.
+ *     responses:
+ *       200:
+ *         description: "Requested document found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Requested document found"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "doc_12345"
+ *                     uid:
+ *                       type: string
+ *                       example: "DOC-2023-001"
+ *                     document_template:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "template_12345"
+ *                         name:
+ *                           type: string
+ *                           example: "Document Template Name"
+ *                         description:
+ *                           type: string
+ *                           example: "A description of the document template."
+ *                         image:
+ *                           type: string
+ *                           example: "https://example.com/image.png"
+ *                         fields:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               key:
+ *                                 type: string
+ *                                 example: "field_1"
+ *                               label:
+ *                                 type: string
+ *                                 example: "Field Label"
+ *                               type:
+ *                                 type: string
+ *                                 example: "text"
+ *                               value:
+ *                                 type: string
+ *                                 example: "Field Value"
+ *                     fields:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           key:
+ *                             type: string
+ *                             example: "field_1"
+ *                           value:
+ *                             type: string
+ *                             example: "Field Value"
+ *                     created_by:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2023-08-01T12:34:56Z"
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2023-08-02T14:34:56Z"
+ *       404:
+ *         description: "Document not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Document not found"
+ *       500:
+ *         description: "Internal server error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while retrieving the document."
+ */
+
 router.get("/document/:id", async (req, res, next) => {
   const { tenantId, tenantUserId } = req.customClaims;
   const { id } = req.params;
@@ -267,45 +820,6 @@ router.get("/document/:id", async (req, res, next) => {
   } catch (error) {
     return createResponse(res, 500, "Internal server error", null, error);
   }
-});
-
-router.post("/mtic-document", async (req, res, next) => {
-  const { tenantId, tenantUserId } = req.customClaims;
-  const { documentId, mticMeta, mtic } = req.body;
-
-  if (!documentId || !mticMeta || !mtic) {
-    return createResponse(
-      res,
-      400,
-      "Request body is incomplete or malformed",
-      null
-    );
-  }
-
-  const { mticReaderId, lat, lon } = mticMeta;
-
-  if (!mticReaderId || !lat || !lon) {
-    return createResponse(
-      res,
-      400,
-      "MTIC Meta data is malformed. Please provide mticReaderId, lat and lon variables",
-      null
-    );
-  }
-
-  const mticReader = await validateMticReader(mticReaderId, tenantId);
-
-  if (!mticReader || !mticReader.isActive) {
-    return createResponse(
-      res,
-      500,
-      "The requested MTIC Reader could not be registered or has been deactivated. Please contact your administrator",
-      null,
-      null
-    );
-  }
-  try {
-  } catch (error) {}
 });
 
 module.exports = router;

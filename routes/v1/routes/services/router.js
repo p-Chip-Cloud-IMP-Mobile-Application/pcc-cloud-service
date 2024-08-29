@@ -14,11 +14,3 @@ router.use("/mtic-requests", authMiddleware, mticRouter);
 router.use("/tenant-requests", tenantRouter);
 
 module.exports = router;
-
-//Things I need to do in order
-
-//Authenticate user
-
-//Give users the most recent documents that they have access to based on tenant and tenant organization roles - Done
-
-//Give users the documents that they have access to create
