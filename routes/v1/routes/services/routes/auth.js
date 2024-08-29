@@ -15,17 +15,14 @@ const createResponse = require("../../../../../helpers/createResponse");
  *       If the token is valid, it returns the associated user profile.
  *     tags:
  *       - Authentication
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               Authorization:
- *                 type: string
- *                 description: "Bearer token"
- *                 example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         schema:
+ *           type: string
+ *           description: "Bearer token"
+ *           example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     responses:
  *       200:
  *         description: "Token is valid and user is found"
@@ -216,17 +213,15 @@ router.post("/verify-token", async (req, res) => {
  *         schema:
  *           type: string
  *         description: The ID of the tenant user whose claims are being updated.
+ *       - in: header
+ *         name: Authorization
+ *         required: true
+ *         description: The Bearer token for authentication.
+ *         schema:
+ *           type: string
+ *           example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
  *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               Authorization:
- *                 type: string
- *                 description: "Bearer token"
- *                 example: "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       required: false
  *     responses:
  *       200:
  *         description: "Custom claims have been updated. Please refresh your token"
@@ -282,7 +277,7 @@ router.post("/verify-token", async (req, res) => {
  *                   example: "error"
  *                 message:
  *                   type: string
- *                   example: "Unauthorized: Missing authorization token."
+ *                   example: "Unauthorized: Missing or invalid authorization token."
  *                 error:
  *                   type: object
  *                   properties:

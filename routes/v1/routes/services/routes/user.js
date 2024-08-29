@@ -14,6 +14,8 @@ const createResponse = require("../../../../../helpers/createResponse");
  *       other available tenants, and the organizations within the current tenant.
  *     tags:
  *       - User
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: "Request successful"
@@ -58,10 +60,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             id:
  *                               type: string
  *                               example: "tenantUser_12345"
- *                             tenant_id:
+ *                             tenantId:
  *                               type: string
  *                               example: "tenant_67890"
- *                             tenant_name:
+ *                             tenantName:
  *                               type: string
  *                               example: "Default Tenant"
  *                             role:
@@ -70,7 +72,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             isActive:
  *                               type: boolean
  *                               example: true
- *                         other_tenant_profiles:
+ *                         otherTenantProfiles:
  *                           type: array
  *                           items:
  *                             type: object
@@ -78,10 +80,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                               id:
  *                                 type: string
  *                                 example: "tenantUser_67890"
- *                               tenant_id:
+ *                               tenantId:
  *                                 type: string
  *                                 example: "tenant_23456"
- *                               tenant_name:
+ *                               tenantName:
  *                                 type: string
  *                                 example: "Other Tenant"
  *                               role:
@@ -108,10 +110,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                             id:
  *                               type: string
  *                               example: "tenantUser_67890"
- *                             tenant_id:
+ *                             tenantId:
  *                               type: string
  *                               example: "tenant_67890"
- *                             tenant_name:
+ *                             tenantName:
  *                               type: string
  *                               example: "Current Tenant"
  *                             role:
@@ -154,9 +156,12 @@ const createResponse = require("../../../../../helpers/createResponse");
  *             schema:
  *               type: object
  *               properties:
- *                 error:
+ *                 status:
  *                   type: string
- *                   example: "User not found"
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "User or current tenant user not found"
  *       500:
  *         description: "Uncaught error"
  *         content:
@@ -215,8 +220,8 @@ router.get("/auth-user-details", async (req, res) => {
 
       const tenantUserProfiles = user.tenantUsers.map((profile) => ({
         id: profile.id,
-        tenant_id: profile.tenant.id,
-        tenant_name: profile.tenant.name,
+        tenantId: profile.tenant.id,
+        tenantName: profile.tenant.name,
         role: profile.role,
         isActive: profile.isActive,
       }));
@@ -230,14 +235,14 @@ router.get("/auth-user-details", async (req, res) => {
           id: user.defaultTenantUser.tenant.id,
           name: user.defaultTenantUser.tenant.name,
         },
-        tenant_profile: {
+        tenantProfile: {
           id: user.defaultTenantUser.id,
-          tenant_id: user.defaultTenantUser.tenant.id,
-          tenant_name: user.defaultTenantUser.tenant.name,
+          tenantId: user.defaultTenantUser.tenant.id,
+          tenantName: user.defaultTenantUser.tenant.name,
           role: user.defaultTenantUser.role,
           isActive: user.defaultTenantUser.isActive,
         },
-        other_tenant_profiles: tenantUserProfiles,
+        otherTenantProfiles: tenantUserProfiles,
       };
 
       const currentLoggedTenantUser = await prisma.tenantUser.findUnique({
@@ -275,8 +280,8 @@ router.get("/auth-user-details", async (req, res) => {
         },
         tenant_profile: {
           id: currentLoggedTenantUser.id,
-          tenant_id: currentLoggedTenantUser.tenant.id,
-          tenant_name: currentLoggedTenantUser.tenant.name,
+          tenantId: currentLoggedTenantUser.tenant.id,
+          tenantName: currentLoggedTenantUser.tenant.name,
           role: currentLoggedTenantUser.role,
           isActive: currentLoggedTenantUser.isActive,
         },
