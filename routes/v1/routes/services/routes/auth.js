@@ -16,6 +16,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *       Returns a JWT token if authentication is successful.
  *     tags:
  *       - Authentication
+ *       - Customer Story
  *     security: []
  *     requestBody:
  *       required: true
@@ -152,8 +153,6 @@ router.post("/login", async (req, res) => {
           },
         },
       });
-
-      
 
       if (!user || !user.defaultTenantUser) {
         return createResponse(

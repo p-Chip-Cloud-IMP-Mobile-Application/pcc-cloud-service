@@ -183,9 +183,11 @@ router.get("/org-documents", async (req, res, next) => {
  *     summary: Get document templates for a specific organization
  *     description: >
  *       Retrieves document templates associated with a specific tenant organization.
+ *       The logged in user can create documents using these templates. If a document is not available, it has not been assigned to the tenant organization to which they are a member
  *       The results are paginated.
  *     tags:
  *       - Document Templates
+ *       - Customer Story
  *     parameters:
  *       - in: query
  *         name: tenantOrgId

@@ -69,6 +69,11 @@ const swaggerConfig = {
         description:
           "Operations related to creating and retrieving MTIC documents and interactions with micro transponder identification chips.",
       },
+      {
+        name: "Customer Story",
+        description:
+          "A step by step walkthrough of how and when you would use these API's.",
+      },
     ],
     components: {
       securitySchemes: {

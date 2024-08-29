@@ -12,8 +12,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *     description: >
  *       Retrieves the authenticated user's profile, including their default tenant,
  *       other available tenants, and the organizations within the current tenant.
+ *       The default tenantId and tenantUserId are by default set in the users claims.
  *     tags:
  *       - User
+ *       - Customer Story
  *     security:
  *       - bearerAuth: []
  *     responses:
