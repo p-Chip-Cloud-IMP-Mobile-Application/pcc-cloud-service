@@ -731,6 +731,153 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /mtic-requests/mtic/{id}:
+ *   get:
+ *     summary: Get MTIC details including associated documents
+ *     description: >
+ *       Retrieves the details of an MTIC, including all associated documents. If no MTIC is found, a 404 error is returned.
+ *     tags:
+ *       - MTIC Documents
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "mtic_12345"
+ *         description: The ID of the MTIC to retrieve details for.
+ *     responses:
+ *       200:
+ *         description: "Record found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Record found"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "mtic_12345"
+ *                     uid:
+ *                       type: string
+ *                       example: "UID12345"
+ *                     documents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "doc_67890"
+ *                           documentTemplate:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "template_abc123"
+ *                               name:
+ *                                 type: string
+ *                                 example: "Product Specification"
+ *                               description:
+ *                                 type: string
+ *                                 example: "Specification for product XYZ"
+ *                               image:
+ *                                 type: string
+ *                                 example: "https://example.com/image.jpg"
+ *                           headerFields:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "productName"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "string"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Product Name"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "Widget A"
+ *                           bodyFields:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 key:
+ *                                   type: string
+ *                                   example: "productionDate"
+ *                                 type:
+ *                                   type: string
+ *                                   example: "dateTime"
+ *                                 label:
+ *                                   type: string
+ *                                   example: "Production Date"
+ *                                 value:
+ *                                   type: string
+ *                                   example: "2024-01-01T00:00:00Z"
+ *       404:
+ *         description: "MTIC not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "MTIC not found"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "MTIC_NOT_FOUND"
+ *                     description:
+ *                       type: string
+ *                       example: "No MTIC found with the specified ID."
+ *       500:
+ *         description: "Internal server error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error. Please try again later"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while processing MTIC documents."
+ *                     details:
+ *                       type: string
+ *                       example: "Error message details"
+ */
+
+// Route to get details of an MTIC including its associated documents
 router.get("/mtic/:id", async (req, res, next) => {
   const { id } = req.params;
   try {
@@ -764,6 +911,13 @@ router.get("/mtic/:id", async (req, res, next) => {
       },
     });
 
+    if (!mtic) {
+      return createResponse(res, 404, "MTIC not found", null, {
+        code: "MTIC_NOT_FOUND",
+        description: "No MTIC found with the specified ID.",
+      });
+    }
+
     const data = {
       id: mtic.id,
       uid: mtic.uid,
@@ -795,9 +949,6 @@ router.get("/mtic/:id", async (req, res, next) => {
           ),
       })),
     };
-
-    console.log("Data", data);
-    console.log("template data", data.documents);
 
     return createResponse(res, 200, "Record found", data, null);
   } catch (error) {
