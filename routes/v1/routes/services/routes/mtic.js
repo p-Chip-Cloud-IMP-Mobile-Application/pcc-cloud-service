@@ -733,13 +733,13 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
 
 /**
  * @swagger
- * /mtic-requests/mtic/{id}:
+ * /mtic-requests/mtic/{id}/summary:
  *   get:
- *     summary: Get MTIC details including associated documents
+ *     summary: Get MTIC summary including the primary document
  *     description: >
- *       Retrieves the details of an MTIC, including all associated documents. If no MTIC is found, a 404 error is returned.
+ *       Retrieves a summary of the MTIC, including the primary document details if available. If no MTIC is found, a 404 error is returned.
  *     tags:
- *       - MTIC Documents
+ *       - MTIC
  *     parameters:
  *       - in: path
  *         name: id
@@ -747,7 +747,7 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
  *         schema:
  *           type: string
  *           example: "mtic_12345"
- *         description: The ID of the MTIC to retrieve details for.
+ *         description: The ID of the MTIC to retrieve the summary for.
  *     responses:
  *       200:
  *         description: "Record found"
@@ -771,63 +771,28 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
  *                     uid:
  *                       type: string
  *                       example: "UID12345"
- *                     documents:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: string
- *                             example: "doc_67890"
- *                           documentTemplate:
- *                             type: object
- *                             properties:
- *                               id:
- *                                 type: string
- *                                 example: "template_abc123"
- *                               name:
- *                                 type: string
- *                                 example: "Product Specification"
- *                               description:
- *                                 type: string
- *                                 example: "Specification for product XYZ"
- *                               image:
- *                                 type: string
- *                                 example: "https://example.com/image.jpg"
- *                           headerFields:
- *                             type: array
- *                             items:
- *                               type: object
- *                               properties:
- *                                 key:
- *                                   type: string
- *                                   example: "productName"
- *                                 type:
- *                                   type: string
- *                                   example: "string"
- *                                 label:
- *                                   type: string
- *                                   example: "Product Name"
- *                                 value:
- *                                   type: string
- *                                   example: "Widget A"
- *                           bodyFields:
- *                             type: array
- *                             items:
- *                               type: object
- *                               properties:
- *                                 key:
- *                                   type: string
- *                                   example: "productionDate"
- *                                 type:
- *                                   type: string
- *                                   example: "dateTime"
- *                                 label:
- *                                   type: string
- *                                   example: "Production Date"
- *                                 value:
- *                                   type: string
- *                                   example: "2024-01-01T00:00:00Z"
+ *                     primaryDocument:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "doc_67890"
+ *                         documentTemplate:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "template_abc123"
+ *                             name:
+ *                               type: string
+ *                               example: "Product Specification"
+ *                             image:
+ *                               type: string
+ *                               example: "https://example.com/image.jpg"
+ *                         documentConfig:
+ *                           type: string
+ *                           example: "Config Name"
  *       404:
  *         description: "MTIC not found"
  *         content:
@@ -877,8 +842,7 @@ router.get("/mtic-documents/:mticId", async (req, res, next) => {
  *                       example: "Error message details"
  */
 
-// Route to get details of an MTIC including its associated documents
-router.get("/mtic/:id", async (req, res, next) => {
+router.get("/mtic/:id/summary", async (req, res, next) => {
   const { id } = req.params;
   try {
     const mtic = await prisma.mTIC.findUnique({
@@ -889,6 +853,9 @@ router.get("/mtic/:id", async (req, res, next) => {
         id: true,
         uid: true,
         mticDocuments: {
+          where: {
+            isPrimary: true,
+          },
           select: {
             id: true,
             document: {
@@ -917,36 +884,385 @@ router.get("/mtic/:id", async (req, res, next) => {
         description: "No MTIC found with the specified ID.",
       });
     }
+    console.log("Raw data return", mtic);
+
+    const primaryDocument =
+      mtic.mticDocuments.length > 0 ? mtic.mticDocuments[0] : null;
+
+    console.log("Primary document returned", primaryDocument);
 
     const data = {
       id: mtic.id,
       uid: mtic.uid,
-      documents: mtic.mticDocuments.map((doc) => ({
+      primaryDocument: primaryDocument
+        ? {
+            id: primaryDocument.id,
+            documentTemplate: {
+              id: primaryDocument.document.documentTemplate.id,
+              name: primaryDocument.document.documentTemplate.name,
+              image: primaryDocument.document.documentTemplate.image,
+            },
+            documentConfig:
+              primaryDocument.document.documentTemplate.documentConfig.name,
+          }
+        : null, // Handle the case where there is no primary document
+    };
+
+    return createResponse(res, 200, "Record found", data, null);
+  } catch (error) {
+    console.error("Error processing MTIC documents:", error);
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description:
+          "An unexpected error occurred while processing MTIC documents.",
+        details: error.message,
+      }
+    );
+  }
+});
+
+/**
+ * @swagger
+ * /mtic-requests/mtic/{id}/details:
+ *   get:
+ *     summary: Get MTIC details including primary and related documents
+ *     description: >
+ *       Retrieves the details of an MTIC, including the primary document and all related documents. If no MTIC is found, a 404 error is returned.
+ *     tags:
+ *       - MTIC
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "mtic_12345"
+ *         description: The ID of the MTIC to retrieve details for.
+ *     responses:
+ *       200:
+ *         description: "Record found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Record found"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "mtic_12345"
+ *                     uid:
+ *                       type: string
+ *                       example: "UID12345"
+ *                     primaryDocument:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "doc_primary_67890"
+ *                         documentTemplate:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               example: "template_abc123"
+ *                             name:
+ *                               type: string
+ *                               example: "Product Specification"
+ *                             image:
+ *                               type: string
+ *                               example: "https://example.com/image.jpg"
+ *                         documentConfig:
+ *                           type: string
+ *                           example: "Config Name"
+ *                         headerFields:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               key:
+ *                                 type: string
+ *                                 example: "productName"
+ *                               type:
+ *                                 type: string
+ *                                 example: "string"
+ *                               label:
+ *                                 type: string
+ *                                 example: "Product Name"
+ *                               value:
+ *                                 type: string
+ *                                 example: "Widget A"
+ *                         bodyFields:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               key:
+ *                                 type: string
+ *                                 example: "productionDate"
+ *                               type:
+ *                                 type: string
+ *                                 example: "dateTime"
+ *                               label:
+ *                                 type: string
+ *                                 example: "Production Date"
+ *                               value:
+ *                                 type: string
+ *                                 example: "2024-01-01T00:00:00Z"
+ *                         meta:
+ *                           type: object
+ *                           properties:
+ *                             createdAt:
+ *                               type: string
+ *                               format: date-time
+ *                               example: "2024-08-30T12:34:56Z"
+ *                             createdBy:
+ *                               type: string
+ *                               example: "John Doe"
+ *                             tenant:
+ *                               type: string
+ *                               example: "Tenant Name"
+ *                             tenantOrganization:
+ *                               type: string
+ *                               example: "Tenant Organization Name"
+ *                             mtiSession:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                   example: "session_12345"
+ *                                 mticReaderId:
+ *                                   type: string
+ *                                   example: "reader_67890"
+ *                                 location:
+ *                                   type: object
+ *                                   properties:
+ *                                     lat:
+ *                                       type: number
+ *                                       format: float
+ *                                       example: 51.509865
+ *                                     lon:
+ *                                       type: number
+ *                                       format: float
+ *                                       example: -0.118092
+ *                                 startDate:
+ *                                   type: string
+ *                                   format: date-time
+ *                                   example: "2024-08-29T08:00:00Z"
+ *                                 endDate:
+ *                                   type: string
+ *                                   format: date-time
+ *                                   example: "2024-08-29T16:00:00Z"
+ *                     relatedDocuments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "doc_related_67890"
+ *                           documentTemplate:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "template_def456"
+ *                               name:
+ *                                 type: string
+ *                                 example: "User Manual"
+ *                               image:
+ *                                 type: string
+ *                                 example: "https://example.com/image2.jpg"
+ *                           documentConfig:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "config_456def"
+ *                               name:
+ *                                 type: string
+ *                                 example: "Config Name"
+ *       404:
+ *         description: "MTIC not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "MTIC not found"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "MTIC_NOT_FOUND"
+ *                     description:
+ *                       type: string
+ *                       example: "No MTIC found with the specified ID."
+ *       500:
+ *         description: "Internal server error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error. Please try again later"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while processing MTIC documents."
+ *                     details:
+ *                       type: string
+ *                       example: "Error message details"
+ */
+
+router.get("/mtic/:id/details", async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const mtic = await prisma.mTIC.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        id: true,
+        uid: true,
+        mticDocuments: {
+          select: {
+            id: true,
+            isPrimary: true,
+            document: {
+              select: {
+                documentFields: true,
+                documentTemplate: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    image: true,
+                    templateFieldConfig: true,
+                    documentConfig: true,
+                  },
+                },
+                tenant: true,
+                tenantOrg: true,
+                createdBy: {
+                  select: {
+                    user: true,
+                  },
+                },
+              },
+            },
+            mticSession: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!mtic) {
+      return createResponse(res, 404, "MTIC not found", null, {
+        code: "MTIC_NOT_FOUND",
+        description: "No MTIC found with the specified ID.",
+      });
+    }
+
+    const primaryDocument = mtic.mticDocuments.find(
+      (document) => document.isPrimary === true
+    );
+
+    const relatedDocuments = mtic.mticDocuments.filter(
+      (document) => document.isPrimary === false
+    );
+
+    const data = {
+      id: mtic.id,
+      uid: mtic.uid,
+      primaryDocument: primaryDocument
+        ? {
+            id: primaryDocument.id,
+            documentTemplate: {
+              id: primaryDocument.document.documentTemplate.id,
+              name: primaryDocument.document.documentTemplate.name,
+              image: primaryDocument.document.documentTemplate.image,
+            },
+            documentConfig:
+              primaryDocument.document.documentTemplate.documentConfig.name,
+            headerFields:
+              primaryDocument.document.documentTemplate.templateFieldConfig.templateFields.map(
+                (field) => ({
+                  key: field.key,
+                  type: field.type,
+                  label: field.label,
+                  value: field.value,
+                })
+              ),
+            bodyFields:
+              primaryDocument.document.documentTemplate.templateFieldConfig.documentFields.map(
+                (field) => ({
+                  key: field.key,
+                  type: field.type,
+                  label: field.label,
+                  value: field.value,
+                })
+              ),
+            meta: {
+              createdAt: primaryDocument.createdAt,
+              createdBy: primaryDocument.document.createdBy.user.name,
+              tenant: primaryDocument.document.tenant.name,
+              tenantOrganization: primaryDocument.document.tenantOrg.name,
+              mtiSession: {
+                id: primaryDocument.mticSession.id,
+                mticReaderId: primaryDocument.mticSession.mticReaderId,
+                location: {
+                  lat: primaryDocument.mticSession.lat,
+                  lon: primaryDocument.mticSession.lon,
+                },
+                startDate: primaryDocument.mticSession.startDateTime,
+                endDate: primaryDocument.mticSession.endDateTime,
+              },
+            },
+          }
+        : null,
+      relatedDocuments: relatedDocuments.map((doc) => ({
         id: doc.id,
         documentTemplate: {
           id: doc.document.documentTemplate.id,
           name: doc.document.documentTemplate.name,
-          description: doc.document.documentTemplate.description,
           image: doc.document.documentTemplate.image,
         },
-        headerFields:
-          doc.document.documentTemplate.templateFieldConfig.templateFields.map(
-            (field) => ({
-              key: field.key,
-              type: field.type,
-              label: field.label,
-              value: field.value,
-            })
-          ),
-        bodyFields:
-          doc.document.documentTemplate.templateFieldConfig.documentFields.map(
-            (field) => ({
-              key: field.key,
-              type: field.type,
-              label: field.label,
-              value: field.value,
-            })
-          ),
+        documentConfig: {
+          id: doc.document.documentTemplate.documentConfig.id,
+          name: doc.document.documentTemplate.documentConfig.name,
+        },
       })),
     };
 

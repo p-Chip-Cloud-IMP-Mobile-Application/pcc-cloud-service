@@ -46,6 +46,7 @@ model Tenant {
   mticReaders               MTICReader[]        @relation("TenantToMTICReader")
   tenantOrgs                TenantOrg[]         @relation("TenantToTenantOrg")
   documents                 Document[]          @relation("TenantToDocument")
+  files                     File[]              @relation("TenantToFile")
 }
 
 //Users that have been granted access to tenant resources and data
@@ -118,6 +119,7 @@ model DocumentConfig {
   fieldConfig       Json               @default("[{}]") //Fields where the value is it in the document object. //Example: Product Name, SKU, Description, Image, Etc.
   tenantId          String
   tenant            Tenant             @relation("TenantToDocumentConfig", fields: [tenantId], references: [id], onDelete: Cascade)
+  isPrimary         Boolean?           @default(false) //A primary document is a the document that you want to use as the header or label of associated MTIC Documents. When MTIC records are searched, the unique id and name of the associated document template will be returned along with the mtic result
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   documentTemplates DocumentTemplate[] @relation("DocumentConfigToDocumentTemplate")
@@ -133,19 +135,20 @@ enum FieldTypes {
 
 //A prefilled template that follows the rules defined by the document config file. The config file defines the fields of the document, the rules of how they must be completed the templates are the documents completed based on those rules
 model DocumentTemplate {
-  id                  String         @id @default(cuid())
-  name                String
-  description         String
-  image               String?
-  documentConfigId    String
-  documentConfig      DocumentConfig @relation("DocumentConfigToDocumentTemplate", fields: [documentConfigId], references: [id], onDelete: Cascade)
-  templateFieldConfig Json           @default("{}")
-  tenantId            String
-  tenant              Tenant         @relation("TenantToDocumentTemplate", fields: [tenantId], references: [id])
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  tenantOrgDocs       TenantOrgDoc[] @relation("DocumentTemplateToTenantOrgDoc")
-  documents           Document[]     @relation("DocumentToDocument")
+  id                    String                 @id @default(cuid())
+  name                  String
+  description           String
+  image                 String?
+  documentConfigId      String
+  documentConfig        DocumentConfig         @relation("DocumentConfigToDocumentTemplate", fields: [documentConfigId], references: [id], onDelete: Cascade)
+  templateFieldConfig   Json                   @default("{}")
+  tenantId              String
+  tenant                Tenant                 @relation("TenantToDocumentTemplate", fields: [tenantId], references: [id])
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tenantOrgDocs         TenantOrgDoc[]         @relation("DocumentTemplateToTenantOrgDoc")
+  documents             Document[]             @relation("DocumentToDocument")
+  documentTemplateFiles DocumentTemplateFile[] @relation("DocumentTemplateToDocumentTemplateFile")
 }
 
 //Document templates can be assigned to one or more tenant organizations. This allows a tenant to control which departments, locations, or other classification where users are able to create specific documents
@@ -177,6 +180,7 @@ model Document {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   mticDocuments      MTICDocument[]   @relation("DocumentToMTICDocument")
+  documentFiles      DocumentFile[]   @relation("DocumentToDocumentFile")
 }
 
 //Micro-transponder identify chip that are attached to tracked documents
@@ -187,6 +191,7 @@ model MTIC {
   updatedAt          DateTime            @updatedAt
   publishedDocuments PublishedDocument[] @relation("MTICToPublishedDocument")
   mticDocuments      MTICDocument[]      @relation("MTICToMTICDocument")
+  mticFiles          MTICFile[]          @relation("MTICToMTICFile")
 }
 
 //A device that is designed to scan and read MTIC's. Each device has a unique serial number which is the id field of the object
@@ -217,15 +222,78 @@ model MTICSession {
 
 //A document to which one or more MTIC chip, representing physical objects, has been applied. For a document to be created, an MTIC log event needs to occur. That log event is then used to associate one document with multiple MTIC tags
 model MTICDocument {
-  id            String       @id @default(cuid())
-  mticId        String?
-  mtic          MTIC?        @relation("MTICToMTICDocument", fields: [mticId], references: [id])
-  mticSessionId String?
-  mticSession   MTICSession? @relation("MTICSessionToMTICDocument", fields: [mticSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  documentId    String
-  document      Document     @relation("DocumentToMTICDocument", fields: [documentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                String             @id @default(cuid())
+  mticId            String?
+  mtic              MTIC?              @relation("MTICToMTICDocument", fields: [mticId], references: [id])
+  mticSessionId     String?
+  mticSession       MTICSession?       @relation("MTICSessionToMTICDocument", fields: [mticSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  documentId        String
+  document          Document           @relation("DocumentToMTICDocument", fields: [documentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  isPrimary         Boolean?           @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  mticDocumentFiles MTICDocumentFile[] @relation("MTICDocumentToMTICDocumentFile")
+}
+
+model DocumentTemplateFile {
+  id                 String           @id @default(cuid())
+  documentTemplateId String
+  documentTemplate   DocumentTemplate @relation("DocumentTemplateToDocumentTemplateFile", fields: [documentTemplateId], references: [id], onDelete: Cascade)
+  fileId             String
+  file               File             @relation("FileToDocumentTemplateFile", fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+model DocumentFile {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation("DocumentToDocumentFile", fields: [documentId], references: [id], onDelete: Cascade)
+  fileId     String
+  file       File     @relation("FileToDocumentFile", fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model MTICDocumentFile {
+  id             String       @id @default(cuid())
+  mticDocumentId String
+  mticDocument   MTICDocument @relation("MTICDocumentToMTICDocumentFile", fields: [mticDocumentId], references: [id], onDelete: Cascade)
+  fileId         String
+  file           File         @relation("FileToMTICDocumentFile", fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model MTICFile {
+  id        String   @id @default(cuid())
+  mticId    String
+  mtic      MTIC     @relation("MTICToMTICFile", fields: [mticId], references: [id], onDelete: Cascade)
+  fileId    String
+  file      File     @relation("FileToMTICFile", fields: [fileId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model File {
+  id                    String                 @id @default(cuid())
+  name                  String?
+  fileName              String
+  blobName              String                 @unique
+  containerName         String
+  blobUrl               String                 @unique
+  contentType           String
+  fileSize              Int
+  tenantid              String
+  tenant                Tenant                 @relation("TenantToFile", fields: [tenantid], references: [id], onDelete: Cascade)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  mticFiles             MTICFile[]             @relation("FileToMTICFile")
+  mticDocumentFiles     MTICDocumentFile[]     @relation("FileToMTICDocumentFile")
+  documentFiles         DocumentFile[]         @relation("FileToDocumentFile")
+  documentTemplateFiles DocumentTemplateFile[] @relation("FileToDocumentTemplateFile")
+
+  @@index([tenantid])
 }
 
 enum Event {

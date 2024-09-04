@@ -62,8 +62,43 @@ This documentation provides detailed information about the p-Chip Cloud Service 
     - **/mtic-requests/start-mtic-session**: This route should be called when a user wants to scan and MTIC tag. The route returns an MTIC session ID. The MTIC session stores the unique identification of the MTIC Reader that is currently connected to your device and your geographical coordinates (lat: latitude, lon: longitude). When creating a session, the server performs the following actions:
       - Searches to see if the MTIC Reader has been registered on the p-Chip Cloud platform.
         - If it has not been registered, it will automatically register the MTIC Reader and assign it to the current Active Tenant stored in the authenticated user's custom claims.
-        - Checks to see if the MTIC reader has been deactivated by the Tenant to which the device was initially registered.
-
+        - Checks to see if the MTIC reader has been deactivated by the Tenant to which the device was initially registered. If the device has been deactivated, the user will recieve an error.
+      - Creates an MTIC Session recording the MTIC reader identification number, the tenant user id and the lat/lon sent with the request and the date and time the session was created.
+      - Returns the MTIC Session Id. This session id needs to be stored to be sent along with any MTIC Document post request.
+    - **/mtic-requests/mtic/{id}/summary**: This route should be called when a user wants to scan multiple MTIC's. For scanning single MTIC's, please see the next step. The route returns the MTIC record which includes the following information:
+      - MTIC Identification Number(id - String): 9-10 digit serial number of the MTIC.
+      - Unique Identification Number (uid - String)
+      - Primary MTIC document: The main document associated with a MTIC for a give tenant. When displaying results, use this data as the fields in a list
+        - Document Template UID (for example: a SKU number)
+        - Document Template Name (for example: a Product Name: Widget A)
+        - Document Template Image (for example: a generic product image for a Widget A)
+      - Document Configuration Name: (for example: Product)
+    - **/mtic-requests/mtic/{id}/details**: This route should be called when a user wants to scan a single MTIC and view the details. The route returns the MTIC record which inlcludes the following information:
+      - - MTIC Identification Number(id - String): 9-10 digit serial number of the MTIC.
+      - Unique Identification Number (uid - String)
+      - Primary MTIC document: The main document associated with a MTIC for a give tenant. When displaying results, use this data as the fields in a list
+        - Document Template
+          - Document Template UID (for example: a SKU number)
+          - Document Template Name (for example: a Product Name: Widget A)
+          - Document Template Image (for example: a generic product image for a Widget A)
+        - Document Configuration Name: (for example: Product)
+        - Header Fields: An array of fields that describe the related document template. Note that all schema values are in string format. Use the type to determine the appropriate way to display the field for your requirements. Each value in the array has the following schema:
+            - key: A unique identifier for the field
+            - type: An enum field type of options: shortText, longText, dateTime, select, checkBox
+            - label: A string value that should be used as a lable for the field value
+            - value: The value of the field in string format
+        - Body Fields: An array of fields that are created when a Document is created. Use the type to determine the appropriate way to display the field for your requirements. Each value in the array has the following schema:
+            - key: A unique identifier for the field
+            - type: An enum field type of options: shortText, longText, dateTime, select, checkBox
+            - label: A string value that should be used as a lable for the field value
+            - value: The value of the field in string format
+        - meta: This is metaData collected at the time that the record was created an udpated. It includes the following information:
+          - CreatedAt: Date created in utc
+          - CreatedBy: The name of the user who created the MTIC Document
+          - Tenant: The tenant that created the MTIC Document
+          - TenantOrganization: The name of the tenant organization that created the document
+          - MTIC Session Details: This is the session data that was when the MTIC document was created. This includes the unique id of the session, MTIC Reader Id, location (lat, lon), startDateTime and endDateTime in UTC.
+      - Related Documents: This is an array of non primary documents that have also been recorded with the requested tag, excluding the primary document. Such documents can include other tenants documents that they have allowed to be public, tests, or other information that has been recorded using the p-Chip Cloud and associated Micro Transponder Technology.
 </details>
 
 <details>

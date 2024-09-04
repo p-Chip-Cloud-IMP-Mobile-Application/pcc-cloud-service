@@ -66,9 +66,19 @@ const swaggerConfig = {
           "Operations related to MTIC sessions and interactions with micro transponder identification chips.",
       },
       {
+        name: "MTIC",
+        description:
+          "Operations related to MTIC record requests micro transponder identification chips.",
+      },
+      {
         name: "MTIC Documents",
         description:
           "Operations related to creating and retrieving MTIC documents and interactions with micro transponder identification chips.",
+      },
+      {
+        name: "Files",
+        description:
+          "Operations related to creating and retrieving files related to MTIC Document Templates, Documents and MTIC Documents.",
       },
       {
         name: "Customer Story",

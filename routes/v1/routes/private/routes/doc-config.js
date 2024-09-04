@@ -39,11 +39,11 @@ router.get("/:id", async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   const { tenantId } = req.customClaims;
-  console.log("Tenant Id", tenantId)
-  const { name, description, fieldConfig } = req.body;
+  console.log("Tenant Id", tenantId);
+  const { name, description, fieldConfig, isPrimary } = req.body;
   console.log("Request Body", req.body);
 
-  if (!tenantId || !name || !description || !fieldConfig) {
+  if (!tenantId || !name || !description || !fieldConfig || !isPrimary) {
     return res.status(400).json({ error: "Missing required parameters" });
   }
   const fieldValidation = documentFieldFormatHelper(fieldConfig);
@@ -57,6 +57,7 @@ router.post("/", async (req, res, next) => {
         name: name,
         description: description,
         fieldConfig: fieldConfig,
+        isPrimary: isPrimary,
       },
     });
     return res
