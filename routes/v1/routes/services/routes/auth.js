@@ -13,7 +13,8 @@ const createResponse = require("../../../../../helpers/createResponse");
  *     summary: User login
  *     description: |
  *       Authenticates a user with their email and password using Firebase Authentication.
- *       Returns a JWT token if authentication is successful.
+ *       Verifies the ID token and sets custom claims for the user based on their tenant access and role.
+ *       Returns a JWT token and custom claims if authentication is successful.
  *     tags:
  *       - Authentication
  *       - Customer Story
@@ -38,7 +39,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                 example: "api-demo"
  *     responses:
  *       200:
- *         description: "Login successful. Returns a JWT token."
+ *         description: "Login successful. Returns a JWT token and custom claims."
  *         content:
  *           application/json:
  *             schema:
@@ -49,7 +50,7 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                   example: "success"
  *                 message:
  *                   type: string
- *                   example: "Login successful"
+ *                   example: "Login successful and claims set"
  *                 data:
  *                   type: object
  *                   properties:
@@ -65,6 +66,46 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                       type: string
  *                       description: "The number of seconds in which the ID token expires."
  *                       example: "3600"
+ *                     customClaims:
+ *                       type: object
+ *                       description: "Custom claims containing user role and tenant information."
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                           description: "The user's unique ID."
+ *                           example: 1
+ *                         tenant:
+ *                           type: object
+ *                           properties:
+ *                             userId:
+ *                               type: integer
+ *                               description: "The user's tenant-specific ID."
+ *                               example: 1
+ *                             id:
+ *                               type: integer
+ *                               description: "The tenant's unique ID."
+ *                               example: 1
+ *                             name:
+ *                               type: string
+ *                               description: "The name of the tenant."
+ *                               example: "Tenant Name"
+ *                         role:
+ *                           type: string
+ *                           description: "The user's role within the tenant."
+ *                           example: "admin"
+ *                         tenantOrgs:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               tenantOrgId:
+ *                                 type: integer
+ *                                 description: "The tenant organization ID."
+ *                                 example: 100
+ *                               permission:
+ *                                 type: string
+ *                                 description: "The permission level of the user within the tenant organization."
+ *                                 example: "read"
  *       400:
  *         description: "Bad request. Email and password are required."
  *         content:
@@ -79,7 +120,11 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                   type: string
  *                   example: "Email and password are required."
  *       401:
- *         description: "Unauthorized. Authentication failed."
+ *         description: |
+ *           Unauthorized. Possible reasons:
+ *           - Authentication failed
+ *           - Invalid token
+ *           - Error setting custom claims
  *         content:
  *           application/json:
  *             schema:
@@ -103,6 +148,10 @@ const createResponse = require("../../../../../helpers/createResponse");
  *                     message:
  *                       type: string
  *                       example: "Login failed"
+ *                     customClaimsError:
+ *                       type: string
+ *                       description: "Details if an error occurred while setting custom claims."
+ *                       example: "An error occurred while setting custom claims. Please try again later."
  */
 
 router.post("/login", async (req, res) => {
@@ -138,7 +187,12 @@ router.post("/login", async (req, res) => {
           defaultTenantUser: {
             select: {
               id: true,
-              tenantId: true,
+              tenant: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
               role: true,
               tenantOrgUser: {
                 select: {
@@ -165,8 +219,11 @@ router.post("/login", async (req, res) => {
       // Construct new custom claims
       const newCustomClaims = {
         id: user.id,
-        tenantId: user.defaultTenantUser.tenantId,
-        tenantUserId: user.defaultTenantUser.id,
+        tenant: {
+          userId: user.defaultTenantUser.id,
+          id: user.defaultTenantUser.tenant.id,
+          name: user.defaultTenantUser.tenant.name,
+        },
         role: user.defaultTenantUser.role,
         tenantOrgs: user.defaultTenantUser.tenantOrgUser.map((orgUser) => ({
           tenantOrgId: orgUser.tenantOrgId,
