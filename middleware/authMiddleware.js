@@ -2,6 +2,7 @@ const prisma = require("../config/prisma");
 const admin = require("../config/firebase");
 
 const authMiddleware = async (req, res, next) => {
+  //console.log("Request headers", req.headers.authorization);
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -16,7 +17,7 @@ const authMiddleware = async (req, res, next) => {
       // Authenticate the token with Firebase
       const decodedToken = await admin.auth().verifyIdToken(token);
 
-      console.log("Decoded token", decodedToken);
+      //console.log("Decoded token", decodedToken);
 
       const { uid, customClaims } = decodedToken;
 
@@ -28,10 +29,14 @@ const authMiddleware = async (req, res, next) => {
             id: true,
             uid: true,
             defaultTenantUser: {
-              where: { isActive: true },
               select: {
                 id: true,
-                tenantId: true,
+                tenant: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
                 role: true,
                 tenantOrgUser: {
                   select: {
@@ -39,6 +44,9 @@ const authMiddleware = async (req, res, next) => {
                     permission: true,
                   },
                 },
+              },
+              where: {
+                isActive: true,
               },
             },
           },
@@ -53,8 +61,11 @@ const authMiddleware = async (req, res, next) => {
         // Construct new custom claims
         const newCustomClaims = {
           id: user.id,
-          tenantId: user.defaultTenantUser.tenantId,
-          tenantUserId: user.defaultTenantUser.id,
+          tenant: {
+            userId: user.defaultTenantUser.id,
+            id: user.defaultTenantUser.tenant.id,
+            name: user.defaultTenantUser.tenant.name,
+          },
           role: user.defaultTenantUser.role,
           tenantOrgs: user.defaultTenantUser.tenantOrgUser.map((orgUser) => ({
             tenantOrgId: orgUser.tenantOrgId,
@@ -62,7 +73,7 @@ const authMiddleware = async (req, res, next) => {
           })),
         };
 
-        console.log("New Custom Claims", newCustomClaims);
+        //console.log("New Custom Claims", newCustomClaims);
 
         // Set custom claims on Firebase token
         await admin

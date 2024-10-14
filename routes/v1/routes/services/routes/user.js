@@ -180,9 +180,11 @@ const createResponse = require("../../../../../helpers/createResponse");
  */
 
 router.get("/auth-user-details", async (req, res) => {
-  const { id, tenantId, tenantUserId } = req.customClaims;
+  const { id, tenant } = req.customClaims;
 
-  if (!id || !tenantId || !tenantUserId) {
+  console.log("Request claims  inside auth-user-details", req.customClaims);
+
+  if (!id || !tenant.id || !tenant.userId) {
     console.error("Missing or malformed custom claims:", req.customClaims);
 
     return createResponse(res, 400, "Missing or malformed claims", null, null);
@@ -248,7 +250,7 @@ router.get("/auth-user-details", async (req, res) => {
       };
 
       const currentLoggedTenantUser = await prisma.tenantUser.findUnique({
-        where: { id: tenantUserId },
+        where: { id: tenant.userId },
         select: {
           id: true,
           tenant: { select: { id: true, name: true } },
@@ -440,6 +442,7 @@ router.get("/auth-user-details", async (req, res) => {
 
 router.get("/tenant-user-documents", async (req, res, next) => {
   const customClaims = req.customClaims;
+  console.log("Custom claims", customClaims);
   const { tenantId, tenantUserId, role, tenantOrgs } = customClaims;
 
   //Pagination variables
@@ -570,6 +573,214 @@ router.get("/tenant-user-documents", async (req, res, next) => {
       documents: returnedDocuments,
       pagination: pagination,
     };
+    return createResponse(res, 200, "Resources found", response, null);
+  } catch (error) {
+    return createResponse(res, 500, "Uncaught Error", null, error);
+  }
+});
+
+/**
+ * @swagger
+ * /user-requests/records-list:
+ *   get:
+ *     summary: Get paginated records list accessible to the authenticated user
+ *     description: >
+ *       Returns a list of records that the authenticated user's role and associated tenant
+ *       organizations allow them access to. The results are paginated.
+ *     tags:
+ *       - Documents
+ *       - User
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *         description: The page number to retrieve.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           example: 25
+ *         description: The number of records to retrieve per page.
+ *     responses:
+ *       200:
+ *         description: "Resources found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 records:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "doc_12345"
+ *                       referenceId:
+ *                         type: string
+ *                         example: "TEMPLATE-001"
+ *                       type:
+ *                         type: string
+ *                         example: "Invoice"
+ *                       name:
+ *                         type: string
+ *                         example: "Document Name"
+ *                       items:
+ *                         type: integer
+ *                         example: 3
+ *                       createdOrganization:
+ *                         type: string
+ *                         example: "Organization Name"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     totalDocuments:
+ *                       type: integer
+ *                       example: 100
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 4
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     perPage:
+ *                       type: integer
+ *                       example: 25
+ *       500:
+ *         description: "Uncaught Error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Uncaught Error"
+ */
+
+router.get("/records-list", async (req, res, next) => {
+  const customClaims = req.customClaims;
+  console.log("Custom claims", customClaims);
+  const { id, tenant, role, tenantOrgs } = customClaims;
+
+  //Pagination variables
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 25;
+  const skip = (page - 1) * limit;
+
+  let documents;
+
+  try {
+    if (role === "administrator") {
+      const tenantDocuments = await prisma.document.findMany({
+        where: {
+          tenantId: tenant.id,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        include: {
+          mticDocuments: true,
+          documentTemplate: {
+            include: {
+              documentConfig: true,
+            },
+          },
+          tenantOrg: true,
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      //console.log("Tenant Documents", tenantDocuments);
+
+      documents = tenantDocuments;
+    }
+
+    if (role === "manager") {
+      const tenantOrgIds = tenantOrgs.map((org) => ({
+        id: org.id,
+      }));
+
+      const tenantOrgDocuments = await prisma.document.findMany({
+        where: {
+          tenantOrgId: {
+            in: tenantOrgIds,
+          },
+        },
+        include: {
+          mticDocuments: true,
+          documentTemplate: {
+            include: {
+              documentConfig: true,
+            },
+          },
+          tenantOrg: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      documents = tenantOrgDocuments;
+    }
+
+    if (role === "individual") {
+      const tenantUserDocuments = await prisma.document.findMany({
+        where: {
+          createdById: tenant.userId,
+        },
+        include: {
+          mticDocuments: true,
+          documentTemplate: {
+            include: {
+              documentConfig: true,
+            },
+          },
+          tenantOrg: true,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+        skip: skip,
+        take: limit,
+      });
+
+      documents = tenantUserDocuments;
+    }
+
+    const totalPages = Math.ceil(documents.length / limit);
+
+    const pagination = {
+      totalDocuments: documents.length,
+      totalPages: totalPages,
+      currentPage: page,
+      perPage: limit,
+    };
+
+    const returnedDocuments = documents.map((document) => ({
+      id: document.id,
+      referenceId: document.documentTemplate.id,
+      type: document.documentTemplate.documentConfig.name,
+      name: document.documentTemplate.name,
+      items: document.mticDocuments.length,
+      createdOrganziation: document.tenantOrg.name,
+    }));
+
+    const response = {
+      records: returnedDocuments,
+      pagination: pagination,
+    };
+    console.log("Response", response);
+
     return createResponse(res, 200, "Resources found", response, null);
   } catch (error) {
     return createResponse(res, 500, "Uncaught Error", null, error);

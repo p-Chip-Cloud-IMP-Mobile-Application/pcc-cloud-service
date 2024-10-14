@@ -334,11 +334,6 @@ router.get("/org-documents", async (req, res, next) => {
 router.get("/org-document-templates", async (req, res, next) => {
   const { tenantOrgId } = req.query;
 
-  // Get pagination parameters from query (default to page 1, limit 10)
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 25;
-  const skip = (page - 1) * limit;
-
   try {
     const tenantOrgDocTemplates = await prisma.tenantOrgDoc.findMany({
       where: {
@@ -351,11 +346,11 @@ router.get("/org-document-templates", async (req, res, next) => {
           },
         },
       },
-      skip: skip,
-      take: limit,
     });
 
-    const formattedDocumentArray = tenantOrgDocTemplates.map((item) => ({
+    console.log("Tenant Org Doc templates", tenantOrgDocTemplates);
+
+    const response = tenantOrgDocTemplates.map((item) => ({
       id: item.documentTemplateId,
       name: item.documentTemplate.name,
       description: item.documentTemplate.description,
@@ -365,20 +360,12 @@ router.get("/org-document-templates", async (req, res, next) => {
       documentConfigName: item.documentTemplate.documentConfig.name,
     }));
 
-    const totalDocuments = formattedDocumentArray.length;
-    const totalPages = Math.ceil(totalDocuments / limit);
-
-    const paginationInfo = {
-      totalDocuments,
-      totalPages,
-      currentPage: page,
-      perPage: limit,
-    };
-
-    return createResponse(res, 200, "Documents retrieved successfully", {
-      documents: formattedDocumentArray,
-      pagination: paginationInfo,
-    });
+    return createResponse(
+      res,
+      200,
+      "Documents retrieved successfully",
+      response
+    );
   } catch (error) {
     console.log("Error", error);
     const { statusCode, message } = prismaErrorHelper(error);
@@ -534,16 +521,11 @@ router.get("/org-document-templates", async (req, res, next) => {
  */
 
 router.post("/org-document", async (req, res, next) => {
-  const { tenantUserId, tenantId } = req.customClaims;
-  const { tenant_org_id, uid, document_data } = req.body;
-  const { document_template_id, document_field_values } = document_data;
+  console.log("Request body", req.body);
+  const { tenant } = req.customClaims;
+  const { tenantOrganizationId, recordTemplateId, bodyFields } = req.body;
 
-  if (
-    !tenant_org_id ||
-    !document_data ||
-    !document_template_id ||
-    !document_field_values
-  ) {
+  if (!tenantOrganizationId || !recordTemplateId || !bodyFields) {
     return createResponse(
       res,
       400,
@@ -556,14 +538,15 @@ router.post("/org-document", async (req, res, next) => {
     const tenantOrgDoc = await prisma.tenantOrgDoc.findUnique({
       where: {
         tenantOrgId_documentTemplateId: {
-          tenantOrgId: tenant_org_id,
-          documentTemplateId: document_template_id,
+          tenantOrgId: tenantOrganizationId,
+          documentTemplateId: recordTemplateId,
         },
       },
       select: {
         documentTemplate: {
           select: {
             templateFieldConfig: true,
+            documentConfig: true,
           },
         },
       },
@@ -584,12 +567,11 @@ router.post("/org-document", async (req, res, next) => {
     const documentFieldConfig =
       tenantOrgDoc.documentTemplate.templateFieldConfig.documentFields;
 
-    console.log("FieldConfig", documentFieldConfig);
+    console.log("Field Config found", documentFieldConfig);
 
-    const validateDocFields = docFormatHelper(
-      documentFieldConfig,
-      document_field_values
-    );
+    const validateDocFields = docFormatHelper(documentFieldConfig, bodyFields);
+
+    console.log("Validate Doc fields", validateDocFields);
 
     if (!validateDocFields.isValid) {
       return createResponse(
@@ -601,21 +583,62 @@ router.post("/org-document", async (req, res, next) => {
       );
     }
 
+    const documentFields = documentFieldConfig.map((config) => {
+      const matchedField = bodyFields.find((field) => field.key === config.key);
+
+      // Return the config with the value from fields or an empty string if no match is found
+      return { ...config, value: matchedField ? matchedField.value : "" };
+    });
+
+    console.log("Document fields", documentFields);
+
     //Attempt to create the document
     try {
       const document = await prisma.document.create({
         data: {
-          uid: uid,
-          documentTemplateId: document_template_id,
-          tenantId: tenantId,
-          tenantOrgId: tenant_org_id,
-          documentFields: document_field_values,
-          createdById: tenantUserId,
+          documentTemplateId: recordTemplateId,
+          tenantId: tenant.id,
+          tenantOrgId: tenantOrganizationId,
+          documentFields: documentFields,
+          createdById: tenant.userId,
+        },
+        include: {
+          documentTemplate: true,
+          documentFiles: true,
+          mticDocuments: true,
+          createdBy: {
+            include: {
+              user: true,
+            },
+          },
         },
       });
 
-      return createResponse(res, 201, "Succesful request", document, null);
+      console.log("Document", document);
+
+      const response = {
+        id: document.id,
+        uid: document.uid,
+        documentTemplate: {
+          id: document.documentTemplate.id,
+          name: document.documentTemplate.name,
+          description: document.documentTemplate.name,
+          image: document.documentTemplate.image,
+          fields: document.documentTemplate.templateFieldConfig.templateFields,
+        },
+        fields: document.documentFields,
+        items: document.mticDocuments.length,
+        files: document.documentFiles.length,
+        createdBy: document.createdBy.user.name,
+        createdAt: document.createdAt,
+        updatedAt: document.updatedAt,
+      };
+
+      console.log("Response", response);
+
+      return createResponse(res, 201, "Succesful request", response, null);
     } catch (error) {
+      console.log("Error", error);
       return createResponse(
         res,
         500,
@@ -764,8 +787,10 @@ router.post("/org-document", async (req, res, next) => {
  */
 
 router.get("/document/:id", async (req, res, next) => {
-  const { tenantId, tenantUserId } = req.customClaims;
+  console.log("Inside the document id request");
   const { id } = req.params;
+
+  console.log("Reqeust params", req.params);
   try {
     //Database query
 
@@ -778,8 +803,14 @@ router.get("/document/:id", async (req, res, next) => {
         select: {
           id: true,
           uid: true,
-          documentTemplate: true,
+          documentTemplate: {
+            include: {
+              documentConfig: true,
+            },
+          },
           documentFields: true,
+          mticDocuments: true,
+          documentFiles: true,
           tenant: true,
           tenantOrg: true,
           createdAt: true,
@@ -803,10 +834,14 @@ router.get("/document/:id", async (req, res, next) => {
           fields: document.documentTemplate.templateFieldConfig.templateFields,
         },
         fields: document.documentFields,
+        items: document.mticDocuments.length,
+        files: document.documentFiles.length,
         created_by: document.createdBy.user.name,
         created_at: document.createdAt,
         updated_at: document.updatedAt,
       };
+
+      console.log("Formatted document", formattedDocument);
 
       requestedDocument = formattedDocument;
     } catch (error) {
@@ -821,6 +856,188 @@ router.get("/document/:id", async (req, res, next) => {
     );
   } catch (error) {
     return createResponse(res, 500, "Internal server error", null, error);
+  }
+});
+
+/**
+ * @swagger
+ * /document-requests/document/{id}/related-mtic:
+ *   get:
+ *     summary: Get a specific document by ID
+ *     description: >
+ *       Retrieves a document by its ID, including details about the document template, fields,
+ *       the user who created it, and timestamps for when it was created and last updated.
+ *     tags:
+ *       - Documents
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "doc_12345"
+ *         description: The ID of the document to retrieve.
+ *     responses:
+ *       200:
+ *         description: "Requested document found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "Requested document found"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "doc_12345"
+ *                     uid:
+ *                       type: string
+ *                       example: "DOC-2023-001"
+ *                     document_template:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: "template_12345"
+ *                         name:
+ *                           type: string
+ *                           example: "Document Template Name"
+ *                         description:
+ *                           type: string
+ *                           example: "A description of the document template."
+ *                         image:
+ *                           type: string
+ *                           example: "https://example.com/image.png"
+ *                         fields:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               key:
+ *                                 type: string
+ *                                 example: "field_1"
+ *                               label:
+ *                                 type: string
+ *                                 example: "Field Label"
+ *                               type:
+ *                                 type: string
+ *                                 example: "text"
+ *                               value:
+ *                                 type: string
+ *                                 example: "Field Value"
+ *                     fields:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           key:
+ *                             type: string
+ *                             example: "field_1"
+ *                           value:
+ *                             type: string
+ *                             example: "Field Value"
+ *                     created_by:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2023-08-01T12:34:56Z"
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2023-08-02T14:34:56Z"
+ *       404:
+ *         description: "Document not found"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Document not found"
+ *       500:
+ *         description: "Internal server error"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "error"
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "DATABASE_ERROR"
+ *                     description:
+ *                       type: string
+ *                       example: "An unexpected error occurred while retrieving the document."
+ */
+
+//Returns a list of mtic's related to a requested document id
+router.get("/document/:id/related-mtic", async (req, res) => {
+  console.log("Inside the route");
+  try {
+    const { id } = req.params;
+    console.log("Document id", id);
+
+    const items = await prisma.document.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        mticDocuments: {
+          select: {
+            mtic: {
+              select: {
+                id: true,
+                uid: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const data = items.mticDocuments.map((item) => ({
+      id: item.mtic.id,
+      uid: item.mtic.uid,
+      createdAt: item.mtic.createdAt,
+    }));
+    console.log("Response", data);
+
+    return createResponse(res, 200, "Requested document found", data, null);
+  } catch (error) {
+    console.error("Error retrieving MTIC documents:", error);
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description: "An error occurred while retrieving MTIC documents.",
+        details: error.message,
+      }
+    );
   }
 });
 

@@ -192,6 +192,25 @@ model MTIC {
   publishedDocuments PublishedDocument[] @relation("MTICToPublishedDocument")
   mticDocuments      MTICDocument[]      @relation("MTICToMTICDocument")
   mticFiles          MTICFile[]          @relation("MTICToMTICFile")
+  mtpLogs            MTPLog[]
+}
+
+model MTPLog {
+  id            String         @id @default(cuid())
+  mticId        String
+  mticSessionId String
+  action        Action
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  mtic          MTIC           @relation(fields: [mticId], references: [id])
+  mticSession   MTICSession    @relation(fields: [mticSessionId], references: [id])
+  mticDocuments MTICDocument[]
+}
+
+enum Action {
+  register
+  search
+  document
 }
 
 //A device that is designed to scan and read MTIC's. Each device has a unique serial number which is the id field of the object
@@ -218,6 +237,7 @@ model MTICSession {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   mticDocuments MTICDocument[] @relation("MTICSessionToMTICDocument")
+  mtpLogs       MTPLog[]
 }
 
 //A document to which one or more MTIC chip, representing physical objects, has been applied. For a document to be created, an MTIC log event needs to occur. That log event is then used to associate one document with multiple MTIC tags
@@ -227,6 +247,8 @@ model MTICDocument {
   mtic              MTIC?              @relation("MTICToMTICDocument", fields: [mticId], references: [id])
   mticSessionId     String?
   mticSession       MTICSession?       @relation("MTICSessionToMTICDocument", fields: [mticSessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  mTPLogId          String?
+  mTPLog            MTPLog?            @relation(fields: [mTPLogId], references: [id])
   documentId        String
   document          Document           @relation("DocumentToMTICDocument", fields: [documentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   isPrimary         Boolean?           @default(false)

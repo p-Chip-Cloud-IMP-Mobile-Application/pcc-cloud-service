@@ -1,7 +1,7 @@
 const docFormatHelper = (fieldConfig, fieldValues) => {
   console.log("Field Config", fieldConfig);
   console.log("Field Values", fieldValues);
-  const validFieldTypes = [
+  const validtypes = [
     "shortText",
     "longText",
     "dateTime",
@@ -42,7 +42,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
     if (correspondingValue) {
       const value = correspondingValue.value;
 
-      switch (config.fieldType) {
+      switch (config.type) {
         case "shortText":
         case "longText":
           if (typeof value !== "string") {
@@ -58,7 +58,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
             formattedFields.push({
               key: config.key,
               label: config.label,
-              type: config.fieldType,
+              type: config.type,
               value: value,
             });
           }
@@ -73,7 +73,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
             formattedFields.push({
               key: config.key,
               label: config.label,
-              type: config.fieldType,
+              type: config.type,
               value: value,
             });
           }
@@ -92,7 +92,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
             formattedFields.push({
               key: config.key,
               label: config.label,
-              type: config.fieldType,
+              type: config.type,
               value: value,
             });
           }
@@ -108,7 +108,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
             formattedFields.push({
               key: config.key,
               label: config.label,
-              type: config.fieldType,
+              type: config.type,
               value: value,
             });
           }
@@ -121,7 +121,7 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
             formattedFields.push({
               key: config.key,
               label: config.label,
-              type: config.fieldType,
+              type: config.type,
               value: value,
             });
           }
@@ -129,12 +129,14 @@ const docFormatHelper = (fieldConfig, fieldValues) => {
 
         default:
           errors.push(
-            `Field "${config.label}" has an unknown field type "${config.fieldType}".`
+            `Field "${config.label}" has an unknown field type "${config.type}".`
           );
           break;
       }
     }
   });
+
+  console.log("Just before the return statement");
 
   return {
     isValid: errors.length === 0,

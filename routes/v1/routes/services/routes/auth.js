@@ -176,7 +176,6 @@ router.post("/login", async (req, res) => {
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
-      console.log("Decoded toen", decodedToken);
       const { uid } = decodedToken;
 
       const user = await prisma.user.findUnique({
@@ -230,6 +229,8 @@ router.post("/login", async (req, res) => {
           permission: orgUser.permission,
         })),
       };
+
+      console.log("Custom Claims", newCustomClaims);
 
       try {
         // Set custom claims on Firebase token

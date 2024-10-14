@@ -125,11 +125,14 @@ const { validateHeaderValue } = require("http");
  */
 
 router.post("/start-mtic-session", async (req, res, next) => {
-  const { tenantId, tenantUserId } = req.customClaims;
-  const { mticReaderId, lat, lon } = req.body;
+  const { tenant } = req.customClaims;
+  console.log("Tenant", tenant);
+  const { mtpReaderId, lat, lon } = req.body;
+
+  console.log("Request body", req.body);
 
   // Validate input
-  if (!tenantId || !tenantUserId || !mticReaderId || !lat || !lon) {
+  if (!tenant.id || !tenant.userId || !mtpReaderId || !lat || !lon) {
     return createResponse(res, 400, "Missing or malformed request", null, {
       code: "INVALID_INPUT",
       description: "One or more required fields are missing or malformed.",
@@ -139,9 +142,11 @@ router.post("/start-mtic-session", async (req, res, next) => {
   try {
     // Validate the MTIC Reader
     const mticReaderValidation = await validateMticReader(
-      mticReaderId,
-      tenantId
+      mtpReaderId,
+      tenant.id
     );
+
+    console.log("MticReaderValidation", mticReaderValidation);
 
     if (!mticReaderValidation || !mticReaderValidation.isActive) {
       return createResponse(res, 400, "MTIC reader validation failed", null, {
@@ -155,18 +160,27 @@ router.post("/start-mtic-session", async (req, res, next) => {
       // Attempt to create a new MTIC session
       const newMTICSession = await prisma.mTICSession.create({
         data: {
-          mticReaderId: mticReaderId,
-          tenantUserId: tenantUserId,
+          mticReaderId: mticReaderValidation.id,
+          tenantUserId: tenant.userId,
           lat: lat,
           lon: lon,
         },
       });
 
+      const data = {
+        sessionId: newMTICSession.id,
+        mtpReaderId: newMTICSession.mticReaderId,
+        lat: newMTICSession.lat,
+        lon: newMTICSession.lon,
+      };
+
+      console.log("Mtic session", data);
+
       return createResponse(
         res,
         201,
         "Session Created Successfully",
-        newMTICSession,
+        data,
         null
       );
     } catch (error) {
@@ -1269,6 +1283,243 @@ router.get("/mtic/:id/details", async (req, res, next) => {
     return createResponse(res, 200, "Record found", data, null);
   } catch (error) {
     console.error("Error processing MTIC documents:", error);
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description:
+          "An unexpected error occurred while processing MTIC documents.",
+        details: error.message,
+      }
+    );
+  }
+});
+
+router.post("/mtic", async (req, res, _) => {
+  console.log("Insside of the mtic post request");
+  const { tenant } = req.customClaims;
+  const { mtpSessionId, mtpId, mtpUid } = req.body;
+
+  console.log("Request body", req.body);
+
+  if (!tenant || !mtpSessionId || !mtpId || !mtpUid) {
+    return createResponse(res, 400, "Missing or malformed request", null, {
+      code: "INVALID_INPUT",
+      description: "One or more required fields are missing or malformed.",
+    });
+  }
+
+  try {
+    const existingMtic = await prisma.mTIC.findUnique({
+      where: {
+        id: mtpId,
+      },
+    });
+
+    console.log("Existing mtic", existingMtic);
+
+    if (existingMtic) {
+      const data = {
+        id: existingMtic.id,
+        uid: existingMtic.uid,
+        mtpSessionId: mtpSessionId,
+      };
+
+      console.log("Data returned", data);
+      return createResponse(
+        res,
+        409,
+        "This MTP has already been registered",
+        data,
+        "Record already exists"
+      );
+    }
+
+    const newMtic = await prisma.mTIC.create({
+      data: {
+        id: mtpId,
+        uid: mtpUid,
+      },
+    });
+
+    if (!newMtic) {
+      return createResponse(res, 500, "Internal Server Error", null, {
+        code: "VALIDATION_ERROR",
+        description:
+          "An uncaught error occurred while attempting to register this MTP Id.",
+        details: error.message,
+      });
+    }
+
+    const mtpLog = await prisma.mTPLog.create({
+      data: {
+        mticId: newMtic.id,
+        mticSessionId: mtpSessionId,
+        action: "register",
+      },
+    });
+
+    console.log("MTP Log", mtpLog);
+
+    const data = {
+      id: newMtic.id,
+      uid: newMtic.uid,
+      mtpSessionId: mtpSessionId,
+    };
+
+    return createResponse(res, 201, "MTP Item registered", data, null);
+  } catch (error) {
+    console.error("Error validating MTIC reader:", error);
+    return createResponse(res, 500, "Internal Server Error", null, {
+      code: "VALIDATION_ERROR",
+      description: "An error occurred while validating the MTIC reader.",
+      details: error.message,
+    });
+  }
+});
+
+router.get("/mtp/:mticSessionId/:id", async (req, res, next) => {
+  const { id, mticSessionId } = req.params;
+  console.log("Inside request", req.params);
+  try {
+    const mtic = await prisma.mTIC.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        mticDocuments: {
+          where: {
+            isPrimary: true,
+          },
+          include: {
+            document: {
+              include: {
+                documentTemplate: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!mtic) {
+      return createResponse(res, 404, "MTIC not found", null, {
+        code: "MTIC_NOT_FOUND",
+        description: "No MTIC found with the specified ID.",
+      });
+    }
+
+    const mtpLog = await prisma.mTPLog.create({
+      data: {
+        mticId: mtic.id,
+        mticSessionId: mticSessionId,
+        action: "search",
+      },
+    });
+
+    //console.log("New log created", mtpLog);
+
+    const data = {
+      id: mtic.id,
+      uid: mtic.uid,
+      image:
+        mtic.mticDocuments.length > 0
+          ? mtic.mticDocuments[0].document.documentTemplate.image
+          : "",
+      name:
+        mtic.mticDocuments.length > 0
+          ? mtic.mticDocuments[0].document.documentTemplate.name
+          : "",
+      description:
+        mtic.mticDocuments.length > 0
+          ? mtic.mticDocuments[0].document.documentTemplate.description
+          : "",
+      createdAt: mtic.createdAt,
+      updatedAt: mtic.updatedAt,
+    };
+
+    console.log("Data returned", data);
+
+    return createResponse(res, 200, "Record found", data, null);
+  } catch (error) {
+    console.error("Error processing MTIC documents:", error);
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description:
+          "An unexpected error occurred while processing MTIC documents.",
+        details: error.message,
+      }
+    );
+  }
+});
+
+router.post("/mtp-document", async (req, res, _) => {
+  const { tenant } = req.customClaims;
+  const { mtpId, recordId, mtpSessionId, isPrimary } = req.body;
+
+  console.log("Tenant inside request", tenant);
+  console.log("MtpId inside of request", req.body);
+
+  if (!tenant || !mtpId || !recordId) {
+    return createResponse(
+      res,
+      400,
+      "Missing or malformed request parameters",
+      null,
+      {
+        code: "INVALID_INPUT",
+        description: "MTP Id and Record Id are missing",
+      }
+    );
+  }
+
+  try {
+    const newMtpDocument = await prisma.mTICDocument.create({
+      data: {
+        mticId: mtpId,
+        documentId: recordId,
+        mticSessionId: mtpSessionId,
+        isPrimary: true,
+      },
+    });
+
+    console.log("MtpDocument created", newMtpDocument);
+
+    if (!newMtpDocument) {
+      console.log("No document returned");
+      return createResponse(
+        res,
+        500,
+        "Internal server error. Please try again later",
+        null,
+        {
+          code: "DATABASE_ERROR",
+          description:
+            "An unexpected error occurred while processing MTIC documents.",
+          details: error.message,
+        }
+      );
+    }
+
+    const data = {
+      mtpId: newMtpDocument.mticId,
+      documentId: newMtpDocument.documentId,
+      mtpSessionId: newMtpDocument.mticSessionId,
+      isPrimary: newMtpDocument.isPrimary,
+    };
+
+    console.log("Data returned", data);
+
+    return createResponse(res, 201, "Record created", data, null);
+  } catch (error) {
     return createResponse(
       res,
       500,
