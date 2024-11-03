@@ -338,3 +338,107 @@ model PublishedDocument {
   owner        Tenant   @relation("OwnerToPublishedDocument", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: Cascade) // Added a relation name for clarity
   createdAt    DateTime @default(now())
 }
+
+//New models for the flutter app
+model Profile {
+  id           String       @id @default(cuid()) // Primary key
+  name         String // Name of the profile
+  picture      String // Profile picture URL
+  email        String       @unique // Unique email for the profile
+  bio          String? // Optional bio field
+  companyId    String? // Foreign key to Company (optional)
+  company      Company?     @relation(fields: [companyId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  tags         Tag[]
+  tagHistories TagHistory[]
+
+  @@map("profiles") // Optional: Map the table name if needed
+}
+
+model Company {
+  id        String    @id @default(cuid()) // Primary key
+  name      String // Company name
+  website   String // Company website
+  industry  Industry // Industry enum field
+  profiles  Profile[] // One-to-many relationship with Profile
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("companies") // Optional: Map the table name if needed
+}
+
+// prisma/schema.prisma
+
+enum Industry {
+  food
+  pharmaceutical
+  automotive
+  luxuryConsumerGoods
+  other
+}
+
+model Reader {
+  address      String       @id
+  name         String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  tags         Tag[]
+  tagHistories TagHistory[]
+
+  @@map("readers")
+}
+
+model Location {
+  id               String       @id @default(cuid()) // Primary key
+  lat              Float
+  lon              Float
+  formattedAddress String
+  tags             Tag[]
+  tagHistories     TagHistory[]
+
+  @@map("locations")
+}
+
+model Tag {
+  id                String       @id // Primary key: mtpId
+  uid               String       @unique // Unique identifier for the tag
+  name              String
+  brand             String
+  description       String
+  imagePath         String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdById       String? // Foreign key to Profile
+  createdBy         Profile?     @relation(fields: [createdById], references: [id])
+  createdLocationId String? // Foreign key to LocationModel
+  createdLocation   Location?    @relation(fields: [createdLocationId], references: [id])
+  createdReaderId   String? // Foreign key to Reader
+  createdReader     Reader?      @relation(fields: [createdReaderId], references: [address])
+  tagHistories      TagHistory[]
+
+  @@map("tags") // Optional: Map the table name if needed
+}
+
+model TagHistory {
+  id                String    @id @default(cuid()) // Primary key
+  tagId             String // Foreign key to Tag
+  tag               Tag       @relation(fields: [tagId], references: [id])
+  createdById       String // Foreign key to Profile
+  createdBy         Profile   @relation(fields: [createdById], references: [id])
+  createdAt         DateTime  @default(now())
+  createdLocationId String // Foreign key to LocationModel
+  createdLocation   Location  @relation(fields: [createdLocationId], references: [id])
+  createdReaderId   String // Foreign key to Reader
+  createdReader     Reader    @relation(fields: [createdReaderId], references: [address])
+  action            TagAction // Enum field to track the action
+
+  @@map("tag_histories") // Optional: Map to a custom table name
+}
+
+enum TagAction {
+  created
+  searched
+  updated
+  deleted
+}

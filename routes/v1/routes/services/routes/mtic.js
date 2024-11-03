@@ -1461,6 +1461,57 @@ router.get("/mtp/:mticSessionId/:id", async (req, res, next) => {
   }
 });
 
+router.get("/validate-mtp/:id", async (req, res, _) => {
+  const { mtpId } = req.params;
+  try {
+    if (!mtpId) {
+      return createResponse(
+        res,
+        400,
+        "Missing or malformed request parameters",
+        null,
+        {
+          code: "INVALID_INPUT",
+          description: "MTP ID is required.",
+        }
+      );
+    }
+
+    const mtp = await prisma.mTIC.findUnique({
+      where: {
+        id: mtpId,
+      },
+    });
+
+    if (!mtp) {
+      return createResponse(res, 404, "Resource not found", null, {
+        code: "INVALID_INPUT",
+        description: "MTP ID is required.",
+      });
+    }
+
+    const data = {
+      id: mtp.id,
+      uid: mtp.uid,
+    };
+
+    return createResponse(res, 200, "Record found", data, null);
+  } catch (error) {
+    return createResponse(
+      res,
+      500,
+      "Internal server error. Please try again later",
+      null,
+      {
+        code: "DATABASE_ERROR",
+        description:
+          "An unexpected error occurred while processing MTIC documents.",
+        details: error.message,
+      }
+    );
+  }
+});
+
 router.post("/mtp-document", async (req, res, _) => {
   const { tenant } = req.customClaims;
   const { mtpId, recordId, mtpSessionId, isPrimary } = req.body;
