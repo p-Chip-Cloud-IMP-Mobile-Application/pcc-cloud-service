@@ -6,12 +6,14 @@ const readerRouter = require("./routes/reader");
 const locationRouter = require("./routes/location");
 const tagRouter = require("./routes/tag");
 const tagHistoryRouter = require("./routes/tagHistory");
+const fileRouter = require("./routes/files");
 
 router.use("/profiles", profileRouter);
-router.use("/comapnies", companyRouter);
+router.use("/companies", companyRouter);
 router.use("/readers", readerRouter);
 router.use("/locations", locationRouter);
 router.use("/tags", tagRouter);
-router.use("/tag-histories", tagHistoryRouter);
+router.use("/tag-history", tagHistoryRouter);
+router.use("/files", fileRouter);
 
 module.exports = router;

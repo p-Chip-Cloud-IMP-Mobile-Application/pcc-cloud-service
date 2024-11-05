@@ -343,7 +343,8 @@ model PublishedDocument {
 model Profile {
   id           String       @id @default(cuid()) // Primary key
   name         String // Name of the profile
-  picture      String // Profile picture URL
+  pictureId    String?
+  picture      Files?       @relation(fields: [pictureId], references: [id])
   email        String       @unique // Unique email for the profile
   bio          String? // Optional bio field
   companyId    String? // Foreign key to Company (optional)
@@ -441,4 +442,18 @@ enum TagAction {
   searched
   updated
   deleted
+}
+
+model Files {
+  id            String    @id @default(cuid())
+  name          String?
+  fileName      String
+  blobName      String    @unique
+  containerName String
+  blobUrl       String    @unique
+  contentType   String
+  fileSize      Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  profiles      Profile[]
 }

@@ -15,7 +15,7 @@ const handleError = (res, error) => {
 router.get("/", async (req, res) => {
   try {
     const profiles = await prisma.profile.findMany({
-      include: { company: true },
+      include: { company: true, picture: true },
     });
     res.status(200).json(profiles);
   } catch (error) {
@@ -33,7 +33,7 @@ router.get("/:id", async (req, res) => {
   try {
     const profile = await prisma.profile.findUnique({
       where: { id },
-      include: { company: true },
+      include: { company: true, picture: true },
     });
 
     if (!profile) {
@@ -51,16 +51,20 @@ router.get("/:id", async (req, res) => {
  * Create a new profile with optional companyId.
  */
 router.post("/", async (req, res) => {
-  const { name, picture, email, bio, companyId } = req.body;
+  const { name, pictureId, email, bio, companyId } = req.body;
 
   try {
     const newProfile = await prisma.profile.create({
       data: {
         name,
-        picture,
+        pictureId,
         email,
         bio,
         company: companyId ? { connect: { id: companyId } } : undefined,
+      },
+      include: {
+        company: true,
+        picture: true,
       },
     });
 
@@ -79,14 +83,14 @@ router.post("/", async (req, res) => {
  */
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, picture, email, bio, companyId } = req.body;
+  const { name, pictureId, email, bio, companyId } = req.body;
 
   try {
     const updatedProfile = await prisma.profile.update({
       where: { id },
       data: {
         name,
-        picture,
+        pictureId,
         email,
         bio,
         company: companyId ? { connect: { id: companyId } } : undefined,
