@@ -14,7 +14,7 @@ const userRouter = require("./routes/user");
 const authMiddleware = require("./authMiddleware");
 
 router.use("/users", userRouter);
-router.use("/profiles", profileRouter);
+router.use("/profiles", authMiddleware, profileRouter);
 router.use("/companies", authMiddleware, companyRouter);
 router.use("/readers", authMiddleware, readerRouter);
 router.use("/locations", authMiddleware, locationRouter);

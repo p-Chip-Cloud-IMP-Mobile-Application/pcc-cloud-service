@@ -10,7 +10,7 @@ const handleError = (res, error) => {
 // GET all tag templates
 router.get("/", async (req, res) => {
   const user = req.user;
-  const profile = req.profile;
+  const profile = user.profile;
 
   try {
     const tagTemplates = await prisma.tagTemplate.findMany({
@@ -53,10 +53,10 @@ router.get("/:id", async (req, res) => {
 
 // POST a new tag template
 router.post("/", async (req, res) => {
-  const { id, name, image, fields } = req.body;
+  const { id, name, image } = req.body;
   const user = req.user;
   const profile = user.profile;
-  // Validation
+
   if (!name || !image) {
     return res.status(400).json({ error: "Name and imageId are required" });
   }
@@ -82,6 +82,8 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { name, imageId, fields } = req.body;
+  const user = req.user;
+  const profile = user.profile;
 
   // Validation
   if (!name || !imageId) {

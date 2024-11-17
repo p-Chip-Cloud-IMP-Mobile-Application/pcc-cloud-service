@@ -29,7 +29,6 @@ router.get("/", authMiddleware, async (req, res) => {
  * Fetch a single profile by ID.
  */
 router.get("/:id", authMiddleware, async (req, res) => {
-  console.log("Inside the get profiles by id route");
   const { id } = req.params;
 
   try {
