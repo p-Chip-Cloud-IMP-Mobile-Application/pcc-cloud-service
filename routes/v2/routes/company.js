@@ -51,16 +51,32 @@ router.get("/:id", async (req, res) => {
  * Create a new company.
  */
 router.post("/", async (req, res) => {
-  const { name, website, industry } = req.body;
-
+  const { id, name, website, industry } = req.body;
+  const user = req.user;
   try {
     const newCompany = await prisma.company.create({
       data: {
+        id,
         name,
         website,
         industry,
       },
     });
+
+    try {
+      if (newCompany) {
+        await prisma.profile.update({
+          where: {
+            id: user.profileId,
+          },
+          data: {
+            companyId: newCompany.id,
+          },
+        });
+      }
+    } catch (error) {
+      print(error);
+    }
 
     res.status(201).json(newCompany);
   } catch (error) {
@@ -82,7 +98,7 @@ router.put("/:id", async (req, res) => {
       data: {
         name,
         website,
-        industry,
+        industry: industry._name,
       },
     });
 

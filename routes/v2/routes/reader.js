@@ -11,14 +11,27 @@ function handleError(res, error) {
   res.status(500).json({ error: "An unexpected error occurred" });
 }
 
-// CREATE: Add a new Reader
+// CREATE: Add a new Reader or confirm if it already exists
 router.post("/", async (req, res) => {
   const { address, name } = req.body;
+  const profile = req.profile;
 
   try {
-    const newReader = await prisma.reader.create({
-      data: { address, name },
+    // Check if the reader already exists based on unique field(s), e.g., address
+    const existingReader = await prisma.reader.findUnique({
+      where: { address }, // Assuming `address` is unique
     });
+
+    if (existingReader) {
+      // Reader already exists, respond with OK status and existing reader data
+      return res.status(200).json(existingReader);
+    }
+
+    // Reader does not exist, create a new one
+    const newReader = await prisma.reader.create({
+      data: { address, name, createdById: profile.id },
+    });
+
     res.status(201).json(newReader);
   } catch (error) {
     handleError(res, error);

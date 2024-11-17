@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "MTICLog" ALTER COLUMN "mticId" DROP NOT NULL;

@@ -31,10 +31,13 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Upload route (already provided)
 router.post("/", upload.single("file"), async (req, res) => {
   try {
-    const file = req.file;
+    const file = req.file; // Access the uploaded file here
+    const metadata = req.body; // Access other metadata
+    const profile = req.profile;
+    console.log("Profile", profile);
+
     if (!file) {
       return res.status(400).send("No file uploaded.");
     }
@@ -51,13 +54,20 @@ router.post("/", upload.single("file"), async (req, res) => {
 
     const savedFile = await prisma.files.create({
       data: {
-        name: file.originalname,
+        name: metadata.name || file.originalname, // Use metadata if available
         fileName: file.originalname,
         blobName: blobName,
         containerName: containerClient.containerName,
         blobUrl: blockBlobClient.url,
         contentType: file.mimetype,
         fileSize: file.size,
+        createdById: profile ? profile.id : null,
+        createdAt: metadata.createdAt
+          ? new Date(metadata.createdAt)
+          : new Date(),
+        updatedAt: metadata.updatedAt
+          ? new Date(metadata.updatedAt)
+          : new Date(),
       },
     });
 

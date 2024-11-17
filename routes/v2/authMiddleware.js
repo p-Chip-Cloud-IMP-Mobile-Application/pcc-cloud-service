@@ -15,7 +15,27 @@ const authMiddleware = async (req, res, next) => {
 
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
-      req.email = decodedToken.email;
+
+      const user = await prisma.user.findUnique({
+        where: { id: decodedToken.uid },
+        include: {
+          profile: {
+            include: {
+              company: true, // Include the company relation within profile
+            },
+          },
+        },
+      });
+
+      const profile = await prisma.profile.findUnique({
+        where: {
+          email: decodedToken.email,
+        },
+      });
+
+      req.profile = profile;
+      req.user = user;
+
       next();
     } catch (error) {
       console.error("Error decoding token:", error);

@@ -13,17 +13,47 @@ function handleError(res, error) {
 
 // CREATE: Add a new TagHistory
 router.post("/", async (req, res) => {
-  const { tagId, createdById, createdLocationId, createdReaderId, action } =
-    req.body;
+  const { tag, createdBy, createdLocation, createdReader, action } = req.body;
+
+  console.log("Tag history in post request", req.body);
 
   try {
     const newTagHistory = await prisma.tagHistory.create({
       data: {
-        tagId,
-        createdById,
-        createdLocationId,
-        createdReaderId,
+        tagId: tag.id,
+        createdById: createdBy.id,
+        createdLocationId: createdLocation.id,
+        createdReaderId: createdReader.address,
         action,
+      },
+      include: {
+        tag: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: {
+              include: {
+                picture: true,
+                company: true,
+              },
+            },
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        },
+        createdBy: {
+          include: {
+            picture: true,
+            company: true,
+          },
+        },
+        createdLocation: true,
+        createdReader: true,
       },
     });
     res.status(201).json(newTagHistory);
@@ -34,15 +64,100 @@ router.post("/", async (req, res) => {
 
 // READ: Get all TagHistories
 router.get("/", async (req, res) => {
+  const user = req.user;
+  const profile = user.profile;
   try {
     const tagHistories = await prisma.tagHistory.findMany({
+      where: {
+        tag: {
+          createdById: profile.id,
+        },
+      },
       include: {
-        tag: true,
-        createdBy: true,
+        tag: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: {
+              include: {
+                picture: true,
+                company: true,
+              },
+            },
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        },
+        createdBy: {
+          include: {
+            picture: true,
+            company: true,
+          },
+        },
         createdLocation: true,
         createdReader: true,
       },
     });
+    res.status(200).json(tagHistories);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// READ: Get Tags by optional filters
+router.get("/search", async (req, res) => {
+  const { tagId, createdById, createdLocationId, createdReaderId } = req.query;
+
+  try {
+    const tagHistories = await prisma.tagHistory.findMany({
+      where: {
+        ...(tagId && { tagId }),
+        ...(createdLocationId && { createdLocationId }),
+        ...(createdById && { createdById }),
+        ...(createdReaderId && { createdReaderId }),
+      },
+      include: {
+        tag: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: {
+              include: {
+                picture: true,
+                company: true,
+              },
+            },
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        },
+        createdBy: {
+          include: {
+            picture: true,
+            company: true,
+          },
+        },
+        createdLocation: true,
+        createdReader: true,
+      },
+    });
+
+    if (tagHistories.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No tag histories found matching the criteria" });
+    }
+
     res.status(200).json(tagHistories);
   } catch (error) {
     handleError(res, error);
@@ -62,6 +177,35 @@ router.get("/:id", async (req, res) => {
         createdLocation: true,
         createdReader: true,
       },
+      include: {
+        tag: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: {
+              include: {
+                picture: true,
+                company: true,
+              },
+            },
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        },
+        createdBy: {
+          include: {
+            picture: true,
+            company: true,
+          },
+        },
+        createdLocation: true,
+        createdReader: true,
+      },
     });
 
     if (!tagHistory) {
@@ -77,18 +221,46 @@ router.get("/:id", async (req, res) => {
 // UPDATE: Update a TagHistory by ID
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { tagId, createdById, createdLocationId, createdReaderId, action } =
-    req.body;
+  const { tag, createdBy, createdLocation, createdReader, action } = req.body;
 
   try {
     const updatedTagHistory = await prisma.tagHistory.update({
       where: { id },
       data: {
-        tagId,
-        createdById,
-        createdLocationId,
-        createdReaderId,
+        tagId: tag.id,
+        createdById: createdBy.id,
+        createdLocationId: createdLocation.id,
+        createdReaderId: createdReader.id,
         action,
+      },
+      include: {
+        tag: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: {
+              include: {
+                picture: true,
+                company: true,
+              },
+            },
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        },
+        createdBy: {
+          include: {
+            picture: true,
+            company: true,
+          },
+        },
+        createdLocation: true,
+        createdReader: true,
       },
     });
 

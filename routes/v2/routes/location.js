@@ -13,11 +13,12 @@ function handleError(res, error) {
 
 // CREATE: Add a new Location
 router.post("/", async (req, res) => {
-  const { lat, lon, formattedAddress } = req.body;
+  const { id, lat, lon, formattedAddress } = req.body;
+  const profile = req.profile;
 
   try {
     const newLocation = await prisma.location.create({
-      data: { lat, lon, formattedAddress },
+      data: { id, lat, lon, formattedAddress, createdById: profile.id },
     });
     res.status(201).json(newLocation);
   } catch (error) {

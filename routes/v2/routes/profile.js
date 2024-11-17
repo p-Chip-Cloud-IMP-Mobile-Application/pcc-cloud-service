@@ -1,5 +1,6 @@
 const express = require("express");
 const prisma = require("../../../config/prisma");
+const authMiddleware = require("../authMiddleware");
 const router = express.Router();
 
 // Helper function to handle errors consistently
@@ -12,7 +13,7 @@ const handleError = (res, error) => {
  * GET /profiles
  * Fetch all profiles with optional company relationship.
  */
-router.get("/", async (req, res) => {
+router.get("/", authMiddleware, async (req, res) => {
   try {
     const profiles = await prisma.profile.findMany({
       include: { company: true, picture: true },
@@ -27,7 +28,8 @@ router.get("/", async (req, res) => {
  * GET /profiles/:id
  * Fetch a single profile by ID.
  */
-router.get("/:id", async (req, res) => {
+router.get("/:id", authMiddleware, async (req, res) => {
+  console.log("Inside the get profiles by id route");
   const { id } = req.params;
 
   try {
@@ -50,23 +52,54 @@ router.get("/:id", async (req, res) => {
  * POST /profiles
  * Create a new profile with optional companyId.
  */
-router.post("/", async (req, res) => {
-  const { name, pictureId, email, bio, companyId } = req.body;
+router.post("/", authMiddleware, async (req, res) => {
+  const { id, name, picture, email, bio, company } = req.body;
+  const user = req.user;
 
   try {
     const newProfile = await prisma.profile.create({
       data: {
+        id,
         name,
-        pictureId,
+        pictureId: picture.id,
         email,
         bio,
-        company: companyId ? { connect: { id: companyId } } : undefined,
+        companyId: company ? company.id : undefined,
       },
       include: {
         company: true,
         picture: true,
       },
     });
+
+    if (newProfile) {
+      try {
+        const updatedUser = await prisma.user.update({
+          where: {
+            id: user.id,
+          },
+          data: {
+            profileId: newProfile.id,
+          },
+        });
+        console.log("Updated User:", updatedUser);
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          // Handle known Prisma errors
+          console.log("Prisma Error Code:", error.code);
+          console.log("Prisma Error Message:", error.message);
+        } else if (error instanceof Prisma.PrismaClientUnknownRequestError) {
+          // Handle unknown Prisma errors
+          console.log("Unknown Prisma Error:", error.message);
+        } else if (error instanceof Prisma.PrismaClientValidationError) {
+          // Handle validation errors
+          console.log("Validation Error:", error.message);
+        } else {
+          // General error fallback
+          console.log("Unexpected Error:", error);
+        }
+      }
+    }
 
     res.status(201).json(newProfile);
   } catch (error) {
@@ -81,19 +114,21 @@ router.post("/", async (req, res) => {
  * PUT /profiles/:id
  * Update an existing profile by ID.
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
-  const { name, pictureId, email, bio, companyId } = req.body;
+  const { name, picture, email, bio, company } = req.body;
+
+  console.log("Request body", req.body);
 
   try {
     const updatedProfile = await prisma.profile.update({
       where: { id },
       data: {
         name,
-        pictureId,
+        pictureId: picture.id,
         email,
         bio,
-        company: companyId ? { connect: { id: companyId } } : undefined,
+        companyId: company.id,
       },
     });
 
@@ -112,7 +147,7 @@ router.put("/:id", async (req, res) => {
  * DELETE /profiles/:id
  * Delete a profile by ID.
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authMiddleware, async (req, res) => {
   const { id } = req.params;
 
   try {
