@@ -57,6 +57,7 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   console.log("Inside company location post route");
+  const user = req.user;
   const { id, name, company, location } = req.body;
 
   try {
@@ -64,12 +65,42 @@ router.post("/", async (req, res) => {
       data: {
         id,
         name,
-        companyId: company.id,
-        locationId: location.id,
+        company: {
+          connectOrCreate: {
+            where: {
+              id: company.id, // Assuming `company.id` uniquely identifies the company
+            },
+            create: {
+              id: company.id,
+              name: company.name,
+              website: company.website,
+              industry: company.industry,
+              // Add other company fields as necessary
+            },
+          },
+        },
+        location: {
+          connectOrCreate: {
+            where: {
+              id: location.id, // Assuming `location.id` uniquely identifies the location
+            },
+            create: {
+              id: location.id,
+              formattedAddress: location.formattedAddress,
+              lat: location.lat,
+              lon: location.lon,
+              createdBy: {
+                connect: {
+                  id: user.profile.id, // Directly reference the unique identifier
+                },
+              },
+            },
+          },
+        },
       },
     });
 
-    res.status(201).json(newCompany);
+    res.status(201).json(newCompanyLocation);
   } catch (error) {
     handleError(res, error);
   }

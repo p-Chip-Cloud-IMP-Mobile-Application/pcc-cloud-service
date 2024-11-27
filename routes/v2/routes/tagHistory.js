@@ -62,6 +62,44 @@ router.post("/", async (req, res) => {
   }
 });
 
+// BULK CREATE: Add multiple TagHistory records
+router.post("/bulk", async (req, res) => {
+  const { tagHistories } = req.body; 
+
+  // Validation: Check if `tagHistories` is an array
+  if (!Array.isArray(tagHistories) || tagHistories.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Invalid or missing tagHistories array" });
+  }
+
+  try {
+    // Create multiple TagHistory records using `createMany`
+    const createdTagHistories = await prisma.tagHistory.createMany({
+      data: tagHistories.map((tagHistory) => ({
+        id: tagHistory.id,
+        tagId: tagHistory.tag.id,
+        createdById: tagHistory.createdBy.id,
+        createdLocationId: tagHistory.createdLocation?.id || null, // Optional field
+        createdReaderId: tagHistory.createdReader?.address || null, // Optional field
+        action: tagHistory.action,
+      })),
+      skipDuplicates: true, // Optional: Skip duplicates if needed
+    });
+
+    res.status(201).json({
+      message: "TagHistories created successfully",
+      count: createdTagHistories.count,
+    });
+  } catch (error) {
+    console.error("Error creating tag histories:", error);
+    res.status(500).json({
+      error: "Failed to create tag histories",
+      details: error.message,
+    });
+  }
+});
+
 // READ: Get all TagHistories
 router.get("/", async (req, res) => {
   const user = req.user;
@@ -101,6 +139,9 @@ router.get("/", async (req, res) => {
         },
         createdLocation: true,
         createdReader: true,
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     });
     res.status(200).json(tagHistories);

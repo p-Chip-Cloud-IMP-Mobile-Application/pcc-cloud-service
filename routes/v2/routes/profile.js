@@ -52,7 +52,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
  * Create a new profile with optional companyId.
  */
 router.post("/", authMiddleware, async (req, res) => {
-  const { id, name, picture, email, bio, company } = req.body;
+  const { id, name, email, bio, company } = req.body;
   const user = req.user;
 
   try {
@@ -60,45 +60,30 @@ router.post("/", authMiddleware, async (req, res) => {
       data: {
         id,
         name,
-        pictureId: picture.id,
         email,
         bio,
-        companyId: company ? company.id : undefined,
+        company: {
+          connectOrCreate: {
+            where: {
+              id: company.id, // Replace this with the unique identifier for the company
+            },
+            create: {
+              id: company.id, // Set necessary fields for creating a company
+              name: company.name,
+              website: company.website,
+              industry: company.industry, // Include other required fields
+            },
+          },
+        },
+        user: {
+          connect: { id: user.id },
+        },
       },
       include: {
         company: true,
         picture: true,
       },
     });
-
-    if (newProfile) {
-      try {
-        const updatedUser = await prisma.user.update({
-          where: {
-            id: user.id,
-          },
-          data: {
-            profileId: newProfile.id,
-          },
-        });
-        console.log("Updated User:", updatedUser);
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          // Handle known Prisma errors
-          console.log("Prisma Error Code:", error.code);
-          console.log("Prisma Error Message:", error.message);
-        } else if (error instanceof Prisma.PrismaClientUnknownRequestError) {
-          // Handle unknown Prisma errors
-          console.log("Unknown Prisma Error:", error.message);
-        } else if (error instanceof Prisma.PrismaClientValidationError) {
-          // Handle validation errors
-          console.log("Validation Error:", error.message);
-        } else {
-          // General error fallback
-          console.log("Unexpected Error:", error);
-        }
-      }
-    }
 
     res.status(201).json(newProfile);
   } catch (error) {

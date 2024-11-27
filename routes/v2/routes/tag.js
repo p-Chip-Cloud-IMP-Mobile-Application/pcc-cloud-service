@@ -31,7 +31,108 @@ router.post("/", async (req, res) => {
   }
 });
 
-// READ: Get all Tags
+router.post("/bulk", async (req, res) => {
+  const { tags } = req.body; // Expecting an array of tag objects
+
+  // Validation: Check if `tags` is an array
+  if (!Array.isArray(tags) || tags.length === 0) {
+    return res.status(400).json({ error: "Invalid or missing tags array" });
+  }
+
+  try {
+    const upsertedTags = await Promise.all(
+      tags.map(async (tag) => {
+        const {
+          id,
+          uid,
+          tagTemplate,
+          companyLocation,
+          createdBy,
+          createdLocation,
+          createdReader,
+        } = tag;
+
+        // Validate required fields
+        if (!tagTemplate?.id || !createdBy?.id || !companyLocation?.id) {
+          throw new Error(
+            `Missing required fields for tag with ID: ${id || "new record"}`
+          );
+        }
+
+        // Check if the tag already exists
+        const existingTag = id
+          ? await prisma.tag.findUnique({ where: { id } })
+          : null;
+
+        const action = existingTag ? "update" : "create";
+
+        // Perform Tag upsert
+        const upsertedTag = await prisma.tag.upsert({
+          where: { id: id || "" }, // Use empty string for new records
+          update: {
+            uid,
+            tagTemplateId: tagTemplate.id,
+            companyLocationId: companyLocation.id,
+            companyId: companyLocation.company.id,
+          },
+          create: {
+            id,
+            uid,
+            tagTemplateId: tagTemplate.id,
+            companyLocationId: companyLocation.id, // Use the scalar foreign key
+            companyId: companyLocation.company.id,
+            createdById: createdBy.id, // Use scalar foreign key
+            createdLocationId: createdLocation.id, // Use scalar foreign key
+            createdReaderId: createdReader.address, // Use scalar foreign key
+          },
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: true,
+          },
+        });
+
+        await prisma.tagHistory.create({
+          data: {
+            action, // Action will be "create" or "update"
+            tag: {
+              connect: { id: upsertedTag.id },
+            },
+            createdBy: {
+              connect: { id: createdBy.id },
+            },
+            createdLocation: {
+              connect: { id: createdLocation.id },
+            },
+            createdReader: {
+              connect: { address: createdReader.address },
+            },
+          },
+        });
+
+        return upsertedTag;
+      })
+    );
+
+    res.status(200).json({
+      message: "Tags and tag history processed successfully",
+      upsertedTags,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ error: "Failed to process tags", details: error.message });
+  }
+});
+
 // READ: Get all Tags
 router.get("/", async (req, res) => {
   const user = req.user;
@@ -59,6 +160,9 @@ router.get("/", async (req, res) => {
         createdLocation: true,
         createdReader: true,
         companyLocation: true,
+      },
+      orderBy: {
+        updatedAt: "desc",
       },
     });
 
@@ -101,20 +205,22 @@ router.get("/:id", async (req, res) => {
 
 // READ: Get Tags by optional filters
 router.get("/search", async (req, res) => {
-  const { tagTemplateId, createdById, createdLocationId, createdReaderId } =
-    req.query;
+  const {
+    tagTemplateId,
+    createdById,
+    createdLocationId,
+    createdReaderId,
+    companyId,
+  } = req.query;
 
   try {
     const tags = await prisma.tag.findMany({
       where: {
-        AND: [
-          tagTemplateId ? { tagTemplateId: tagTemplateId } : undefined,
-          createdById ? { createdById: createdById } : undefined,
-          createdLocationId
-            ? { createdLocationId: createdLocationId }
-            : undefined,
-          createdReaderId ? { createdReaderId: createdReaderId } : undefined,
-        ].filter(Boolean), // Filter out any undefined values
+        ...(tagTemplateId && { tagTemplateId }),
+        ...(createdLocationId && { createdLocationId }),
+        ...(createdById && { createdById }),
+        ...(createdReaderId && { createdReaderId }),
+        ...(companyId && { companyId }),
       },
       include: {
         tagTemplate: {

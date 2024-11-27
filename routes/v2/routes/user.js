@@ -9,13 +9,12 @@ const handleError = (res, error) => {
   res.status(500).json({ error: "An unexpected error occurred" });
 };
 
-router.get("/:id", authMiddleware, async (req, res) => {
-  const params = req.params;
-  const user = req.user;
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
 
   try {
     const searchedUser = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: id },
     });
 
     if (!searchedUser) {
