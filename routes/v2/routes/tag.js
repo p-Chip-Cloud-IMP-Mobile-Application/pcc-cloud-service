@@ -24,6 +24,27 @@ router.post("/", async (req, res) => {
         createdLocationId: createdLocation.id,
         createdReaderId: createdReader.address,
       },
+      include: {
+        tagTemplate: {
+          include: {
+            fields: true,
+            image: true,
+          },
+        },
+        createdBy: true,
+        createdLocation: true,
+        createdReader: true,
+        companyLocation: {
+          include: {
+            location: true,
+            company: true,
+          },
+        },
+        company: true,
+
+        parents: true,
+        children: true,
+      },
     });
     res.status(201).json(newTag);
   } catch (error) {
@@ -95,7 +116,16 @@ router.post("/bulk", async (req, res) => {
             createdBy: true,
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+
+            parents: true,
+            children: true,
           },
         });
 
@@ -159,7 +189,16 @@ router.get("/", async (req, res) => {
         createdBy: true,
         createdLocation: true,
         createdReader: true,
-        companyLocation: true,
+        companyLocation: {
+          include: {
+            location: true,
+            company: true,
+          },
+        },
+        company: true,
+
+        parents: true,
+        children: true,
       },
       orderBy: {
         updatedAt: "desc",
@@ -189,7 +228,16 @@ router.get("/:id", async (req, res) => {
         createdBy: true,
         createdLocation: true,
         createdReader: true,
-        companyLocation: true,
+        companyLocation: {
+          include: {
+            location: true,
+            company: true,
+          },
+        },
+        company: true,
+
+        parents: true,
+        children: true,
       },
     });
 
@@ -232,7 +280,16 @@ router.get("/search", async (req, res) => {
         createdBy: true,
         createdLocation: true,
         createdReader: true,
-        companyLocation: true,
+        companyLocation: {
+          include: {
+            location: true,
+            company: true,
+          },
+        },
+        company: true,
+
+        parents: true,
+        children: true,
       },
     });
 
@@ -274,7 +331,15 @@ router.put("/:id", async (req, res) => {
         createdBy: true,
         createdLocation: true,
         createdReader: true,
-        companyLocation: true,
+        companyLocation: {
+          include: {
+            location: true,
+            company: true,
+          },
+        },
+        company: true,
+        parents: true,
+        children: true,
       },
     });
 

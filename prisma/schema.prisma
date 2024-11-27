@@ -104,7 +104,7 @@ model Location {
 }
 
 model Tag {
-  id                String           @id // Primary key: mtpId
+  id                String           @id @default(cuid()) // Primary key
   uid               String?
   tagTemplateId     String
   tagTemplate       TagTemplate      @relation(fields: [tagTemplateId], references: [id])
@@ -118,10 +118,13 @@ model Tag {
   createdReader     Reader?          @relation(fields: [createdReaderId], references: [address])
   companyLocationId String?
   companyLocation   CompanyLocation? @relation(fields: [companyLocationId], references: [id])
+  isActive          Boolean          @default(true)
   tagHistories      TagHistory[]
   companyId         String?
   company           Company?         @relation(fields: [companyId], references: [id])
-  TagDocuments      TagDocuments[]
+  tagDocuments      TagDocuments[]
+  parents           Tag[]            @relation("ParentChild")
+  children          Tag[]            @relation("ParentChild")
 
   @@map("tags") // Optional: Map the table name if needed
 }

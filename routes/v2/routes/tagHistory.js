@@ -43,7 +43,13 @@ router.post("/", async (req, res) => {
             },
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
           },
         },
         createdBy: {
@@ -64,7 +70,7 @@ router.post("/", async (req, res) => {
 
 // BULK CREATE: Add multiple TagHistory records
 router.post("/bulk", async (req, res) => {
-  const { tagHistories } = req.body; 
+  const { tagHistories } = req.body;
 
   // Validation: Check if `tagHistories` is an array
   if (!Array.isArray(tagHistories) || tagHistories.length === 0) {
@@ -128,7 +134,13 @@ router.get("/", async (req, res) => {
             },
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
           },
         },
         createdBy: {
@@ -179,7 +191,13 @@ router.get("/search", async (req, res) => {
             },
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
           },
         },
         createdBy: {
@@ -235,7 +253,13 @@ router.get("/:id", async (req, res) => {
             },
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
           },
         },
         createdBy: {
@@ -291,7 +315,13 @@ router.put("/:id", async (req, res) => {
             },
             createdLocation: true,
             createdReader: true,
-            companyLocation: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
           },
         },
         createdBy: {
