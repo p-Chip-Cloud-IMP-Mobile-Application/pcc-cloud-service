@@ -31,6 +31,16 @@ router.post("/", async (req, res) => {
             image: true,
           },
         },
+        templateVariant: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+          },
+        },
         createdBy: true,
         createdLocation: true,
         createdReader: true,
@@ -42,8 +52,46 @@ router.post("/", async (req, res) => {
         },
         company: true,
 
-        parents: true,
-        children: true,
+        parents: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
+        children: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
       },
     });
     res.status(201).json(newTag);
@@ -67,10 +115,12 @@ router.post("/bulk", async (req, res) => {
           id,
           uid,
           tagTemplate,
+          templateVariant,
           companyLocation,
           createdBy,
           createdLocation,
           createdReader,
+          parents, // Array of parent tags
         } = tag;
 
         // Validate required fields
@@ -80,12 +130,7 @@ router.post("/bulk", async (req, res) => {
           );
         }
 
-        // Check if the tag already exists
-        const existingTag = id
-          ? await prisma.tag.findUnique({ where: { id } })
-          : null;
-
-        const action = existingTag ? "update" : "create";
+        const action = id ? "update" : "create";
 
         // Perform Tag upsert
         const upsertedTag = await prisma.tag.upsert({
@@ -93,8 +138,12 @@ router.post("/bulk", async (req, res) => {
           update: {
             uid,
             tagTemplateId: tagTemplate.id,
+            templateVariantId: templateVariant.id,
             companyLocationId: companyLocation.id,
             companyId: companyLocation.company.id,
+            parents: {
+              connect: parents?.map((parent) => ({ id: parent.id })) || [],
+            },
           },
           create: {
             id,
@@ -105,12 +154,26 @@ router.post("/bulk", async (req, res) => {
             createdById: createdBy.id, // Use scalar foreign key
             createdLocationId: createdLocation.id, // Use scalar foreign key
             createdReaderId: createdReader.address, // Use scalar foreign key
+            parents: {
+              connect: parents?.map((parent) => ({ id: parent.id })) || [],
+            },
+            templateVariantId: templateVariant.id,
           },
           include: {
             tagTemplate: {
               include: {
                 fields: true,
                 image: true,
+              },
+            },
+            templateVariant: {
+              include: {
+                tagTemplate: {
+                  include: {
+                    fields: true,
+                    image: true,
+                  },
+                },
               },
             },
             createdBy: true,
@@ -124,12 +187,67 @@ router.post("/bulk", async (req, res) => {
             },
             company: true,
 
-            parents: true,
-            children: true,
+            parents: {
+              include: {
+                tagTemplate: {
+                  include: {
+                    fields: true,
+                    image: true,
+                  },
+                },
+                createdBy: true,
+                createdLocation: true,
+                createdReader: true,
+                companyLocation: {
+                  include: {
+                    location: true,
+                    company: true,
+                  },
+                },
+                company: true,
+              },
+            },
+            children: {
+              include: {
+                tagTemplate: {
+                  include: {
+                    fields: true,
+                    image: true,
+                  },
+                },
+                createdBy: true,
+                createdLocation: true,
+                createdReader: true,
+                companyLocation: {
+                  include: {
+                    location: true,
+                    company: true,
+                  },
+                },
+                company: true,
+              },
+            },
           },
         });
 
-        await prisma.tagHistory.create({
+        // Connect each parent to the upserted child
+        if (parents && parents.length > 0) {
+          await Promise.all(
+            parents.map(async (parent) => {
+              await prisma.tag.update({
+                where: { id: parent.id },
+                data: {
+                  children: {
+                    connect: { id: upsertedTag.id },
+                  },
+                },
+              });
+            })
+          );
+        }
+
+        // Create a tag history entry
+        const newTagHistory = await prisma.tagHistory.create({
           data: {
             action, // Action will be "create" or "update"
             tag: {
@@ -144,6 +262,14 @@ router.post("/bulk", async (req, res) => {
             createdReader: {
               connect: { address: createdReader.address },
             },
+          },
+        });
+
+        await prisma.tagTemplateVariant.create({
+          data: {
+            tagId: upsertedTag.id,
+            tagHistoryId: newTagHistory.id,
+            templateVariantId: templateVariant.id,
           },
         });
 
@@ -186,6 +312,18 @@ router.get("/", async (req, res) => {
             image: true,
           },
         },
+
+        templateVariant: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+          },
+        },
         createdBy: true,
         createdLocation: true,
         createdReader: true,
@@ -197,8 +335,46 @@ router.get("/", async (req, res) => {
         },
         company: true,
 
-        parents: true,
-        children: true,
+        parents: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
+        children: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
       },
       orderBy: {
         updatedAt: "desc",
@@ -225,6 +401,8 @@ router.get("/:id", async (req, res) => {
             image: true,
           },
         },
+        templateVariant: true,
+        tagTemplateVariants: true,
         createdBy: true,
         createdLocation: true,
         createdReader: true,
@@ -236,8 +414,46 @@ router.get("/:id", async (req, res) => {
         },
         company: true,
 
-        parents: true,
-        children: true,
+        parents: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
+        children: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
       },
     });
 
@@ -255,6 +471,7 @@ router.get("/:id", async (req, res) => {
 router.get("/search", async (req, res) => {
   const {
     tagTemplateId,
+    templateVariantId,
     createdById,
     createdLocationId,
     createdReaderId,
@@ -265,6 +482,7 @@ router.get("/search", async (req, res) => {
     const tags = await prisma.tag.findMany({
       where: {
         ...(tagTemplateId && { tagTemplateId }),
+        ...(templateVariantId && { templateVariantId }),
         ...(createdLocationId && { createdLocationId }),
         ...(createdById && { createdById }),
         ...(createdReaderId && { createdReaderId }),
@@ -277,6 +495,8 @@ router.get("/search", async (req, res) => {
             image: true,
           },
         },
+        templateVariant: true,
+        tagTemplateVariants: true,
         createdBy: true,
         createdLocation: true,
         createdReader: true,
@@ -288,8 +508,46 @@ router.get("/search", async (req, res) => {
         },
         company: true,
 
-        parents: true,
-        children: true,
+        parents: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
+        children: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
       },
     });
 
@@ -308,14 +566,21 @@ router.get("/search", async (req, res) => {
 // UPDATE: Update a Tag by mtpId
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { uid, tagTemplate, createdBy, createdLocation, createdReader } =
-    req.body;
+  const {
+    uid,
+    tagTemplate,
+    templateVariant,
+    createdBy,
+    createdLocation,
+    createdReader,
+  } = req.body;
 
   try {
     const updatedTag = await prisma.tag.update({
       where: { id },
       data: {
         uid,
+        templateVariantId: templateVariant.id,
         tagTemplateId: tagTemplate.id,
         createdById: createdBy.id,
         createdLocationId: createdLocation.id,
@@ -328,6 +593,17 @@ router.put("/:id", async (req, res) => {
             image: true,
           },
         },
+        templateVariant: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+          },
+        },
+        tagTemplateVariants: true,
         createdBy: true,
         createdLocation: true,
         createdReader: true,
@@ -338,8 +614,47 @@ router.put("/:id", async (req, res) => {
           },
         },
         company: true,
-        parents: true,
-        children: true,
+
+        parents: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
+        children: {
+          include: {
+            tagTemplate: {
+              include: {
+                fields: true,
+                image: true,
+              },
+            },
+            createdBy: true,
+            createdLocation: true,
+            createdReader: true,
+            companyLocation: {
+              include: {
+                location: true,
+                company: true,
+              },
+            },
+            company: true,
+          },
+        },
       },
     });
 

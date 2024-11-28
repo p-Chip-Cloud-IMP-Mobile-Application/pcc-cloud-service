@@ -18,24 +18,25 @@ datasource db {
 
 //New models for the flutter app
 model Profile {
-  id           String        @id @default(cuid()) // Primary key
-  name         String // Name of the profile
-  pictureId    String?
-  picture      Files?        @relation("ProfileImage", fields: [pictureId], references: [id])
-  email        String        @unique // Unique email for the profile
-  bio          String? // Optional bio field
-  role         Role?         @default(ADMIN) // New role field with default value
-  companyId    String? // Foreign key to Company (optional)
-  company      Company?      @relation(fields: [companyId], references: [id])
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  files        Files[]       @relation("CreatedBy")
-  tags         Tag[]
-  tagHistories TagHistory[]
-  tagTemplates TagTemplate[]
-  readers      Reader[]
-  locations    Location[]
-  user         User?
+  id               String            @id @default(cuid()) // Primary key
+  name             String // Name of the profile
+  pictureId        String?
+  picture          Files?            @relation("ProfileImage", fields: [pictureId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  email            String            @unique // Unique email for the profile
+  bio              String? // Optional bio field
+  role             Role?             @default(ADMIN) // New role field with default value
+  companyId        String? // Foreign key to Company (optional)
+  company          Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  files            Files[]           @relation("CreatedBy")
+  tags             Tag[]
+  tagHistories     TagHistory[]
+  tagTemplates     TagTemplate[]
+  readers          Reader[]
+  locations        Location[]
+  user             User?
+  templateVariants TemplateVariant[]
 
   @@map("profiles") // Optional: Map the table name if needed
 }
@@ -78,7 +79,7 @@ model Reader {
   address      String       @id
   name         String
   createdById  String
-  createdBy    Profile      @relation(fields: [createdById], references: [id])
+  createdBy    Profile      @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   tags         Tag[]
@@ -93,7 +94,7 @@ model Location {
   lon              Float
   formattedAddress String
   createdById      String
-  createdBy        Profile           @relation(fields: [createdById], references: [id])
+  createdBy        Profile           @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   tags             Tag[]
@@ -104,43 +105,47 @@ model Location {
 }
 
 model Tag {
-  id                String           @id @default(cuid()) // Primary key
-  uid               String?
-  tagTemplateId     String
-  tagTemplate       TagTemplate      @relation(fields: [tagTemplateId], references: [id])
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  createdById       String? // Foreign key to Profile
-  createdBy         Profile?         @relation(fields: [createdById], references: [id])
-  createdLocationId String? // Foreign key to LocationModel
-  createdLocation   Location?        @relation(fields: [createdLocationId], references: [id])
-  createdReaderId   String? // Foreign key to Reader
-  createdReader     Reader?          @relation(fields: [createdReaderId], references: [address])
-  companyLocationId String?
-  companyLocation   CompanyLocation? @relation(fields: [companyLocationId], references: [id])
-  isActive          Boolean          @default(true)
-  tagHistories      TagHistory[]
-  companyId         String?
-  company           Company?         @relation(fields: [companyId], references: [id])
-  tagDocuments      TagDocuments[]
-  parents           Tag[]            @relation("ParentChild")
-  children          Tag[]            @relation("ParentChild")
+  id                  String               @id @default(cuid()) // Primary key
+  uid                 String?
+  tagTemplateId       String?
+  tagTemplate         TagTemplate?         @relation(fields: [tagTemplateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  templateVariantId   String?
+  templateVariant     TemplateVariant?     @relation(fields: [templateVariantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  createdById         String? // Foreign key to Profile
+  createdBy           Profile?             @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdLocationId   String? // Foreign key to LocationModel
+  createdLocation     Location?            @relation(fields: [createdLocationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdReaderId     String? // Foreign key to Reader
+  createdReader       Reader?              @relation(fields: [createdReaderId], references: [address], onDelete: Cascade, onUpdate: Cascade)
+  companyLocationId   String?
+  companyLocation     CompanyLocation?     @relation(fields: [companyLocationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  isActive            Boolean              @default(true)
+  tagHistories        TagHistory[]
+  companyId           String?
+  company             Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tagDocuments        TagDocuments[]
+  parents             Tag[]                @relation("ParentChild")
+  children            Tag[]                @relation("ParentChild")
+  tagTemplateVariants TagTemplateVariant[]
 
   @@map("tags") // Optional: Map the table name if needed
 }
 
 model TagHistory {
-  id                String    @id @default(cuid()) // Primary key
-  tagId             String // Foreign key to Tag
-  tag               Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  createdById       String // Foreign key to Profile
-  createdBy         Profile   @relation(fields: [createdById], references: [id])
-  createdAt         DateTime  @default(now())
-  createdLocationId String // Foreign key to LocationModel
-  createdLocation   Location  @relation(fields: [createdLocationId], references: [id])
-  createdReaderId   String // Foreign key to Reader
-  createdReader     Reader    @relation(fields: [createdReaderId], references: [address])
-  action            TagAction // Enum field to track the action
+  id                  String               @id @default(cuid()) // Primary key
+  tagId               String // Foreign key to Tag
+  tag                 Tag                  @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdById         String // Foreign key to Profile
+  createdBy           Profile              @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt           DateTime             @default(now())
+  createdLocationId   String // Foreign key to LocationModel
+  createdLocation     Location             @relation(fields: [createdLocationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdReaderId     String // Foreign key to Reader
+  createdReader       Reader               @relation(fields: [createdReaderId], references: [address], onDelete: Cascade, onUpdate: Cascade)
+  action              TagAction // Enum field to track the action
+  tagTemplateVariants TagTemplateVariant[]
 
   @@map("tag_histories") // Optional: Map to a custom table name
 }
@@ -162,7 +167,7 @@ model Files {
   contentType       String
   fileSize          Int
   createdById       String?
-  createdBy         Profile?           @relation("CreatedBy", fields: [createdById], references: [id])
+  createdBy         Profile?           @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   profiles          Profile[]          @relation("ProfileImage")
@@ -178,7 +183,7 @@ model Field {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   tagTemplateId      String?
-  tagTemplate        TagTemplate? @relation(fields: [tagTemplateId], references: [id])
+  tagTemplate        TagTemplate? @relation(fields: [tagTemplateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   documentTemplateId String?
 }
 
@@ -199,25 +204,50 @@ enum FieldType {
 }
 
 model TagTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  imageId     String
-  image       Files    @relation(fields: [imageId], references: [id])
-  company     Company? @relation(fields: [companyId], references: [id])
-  createdById String
-  createdBy   Profile  @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  fields      Field[]
-  tags        Tag[]
-  companyId   String?
+  id               String            @id @default(cuid())
+  name             String
+  imageId          String
+  image            Files             @relation(fields: [imageId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  variantFields    Json? //An array of FieldModels that are not saved to the database. The values are generated in variants
+  companyId        String?
+  company          Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdById      String
+  createdBy        Profile           @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  fields           Field[]
+  tags             Tag[]
+  templateVariants TemplateVariant[]
+}
+
+model TemplateVariant {
+  id                  String               @id @default(cuid())
+  tagTemplateId       String
+  tagTemplate         TagTemplate          @relation(fields: [tagTemplateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  fields              Json
+  createdById         String
+  createdBy           Profile              @relation(fields: [createdById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  tagTemplateVariants TagTemplateVariant[]
+  tags                Tag[]
+}
+
+model TagTemplateVariant {
+  id                String          @id @default(cuid())
+  templateVariantId String
+  templateVariant   TemplateVariant @relation(fields: [templateVariantId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tagId             String
+  tag               Tag             @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tagHistoryId      String
+  tagHistory        TagHistory      @relation(fields: [tagHistoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model CompanyLocation {
   id         String   @id @default(cuid())
   name       String
-  company    Company  @relation(fields: [companyId], references: [id])
-  location   Location @relation(fields: [locationId], references: [id])
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   companyId  String
@@ -230,9 +260,9 @@ model DocumentTemplate {
   id           String         @id @default(cuid())
   name         String
   imageId      String?
-  image        Files?         @relation(fields: [imageId], references: [id])
+  image        Files?         @relation(fields: [imageId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   fields       Json
-  company      Company?       @relation(fields: [companyId], references: [id])
+  company      Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   tagDocuments TagDocuments[]
@@ -242,8 +272,8 @@ model DocumentTemplate {
 //completed document assigned to a tag
 model TagDocuments {
   id                 String           @id @default(cuid())
-  tag                Tag              @relation(fields: [tagId], references: [id])
-  documentTemplate   DocumentTemplate @relation(fields: [documentTemplateId], references: [id])
+  tag                Tag              @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  documentTemplate   DocumentTemplate @relation(fields: [documentTemplateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   fields             Json
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -256,7 +286,7 @@ model User {
   id        String   @id @default(cuid()) //UID from firebase
   email     String
   profileId String?  @unique
-  profile   Profile? @relation(fields: [profileId], references: [id])
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

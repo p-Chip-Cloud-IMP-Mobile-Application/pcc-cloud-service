@@ -11,6 +11,7 @@ const fieldsRouter = require("./routes/field");
 const tagTemplateRouter = require("./routes/tagTemplate");
 const companyLocationsRouter = require("./routes/companyLocations");
 const userRouter = require("./routes/user");
+const templateVariantRouter = require("./routes/templateVariant");
 const authMiddleware = require("./authMiddleware");
 
 router.use("/users", userRouter);
@@ -24,5 +25,6 @@ router.use("/files", authMiddleware, fileRouter);
 router.use("/fields", authMiddleware, fieldsRouter);
 router.use("/tag-templates", authMiddleware, tagTemplateRouter);
 router.use("/company-locations", authMiddleware, companyLocationsRouter);
+router.use("/template-variant", authMiddleware, templateVariantRouter);
 
 module.exports = router;

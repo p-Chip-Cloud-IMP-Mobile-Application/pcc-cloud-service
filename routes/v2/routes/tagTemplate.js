@@ -24,6 +24,7 @@ router.get("/", async (req, res) => {
             tagTemplate: true,
           },
         },
+        templateVariants: true,
         tags: true,
       }, // Include related data
     });
@@ -51,28 +52,54 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST a new tag template
 router.post("/", async (req, res) => {
-  const { id, name, image } = req.body;
+  const { id, name, image, fields, variantFields } = req.body;
   const user = req.user;
   const profile = user.profile;
 
-  if (!name || !image) {
+  if (!name || !image || !fields || !variantFields) {
     return res.status(400).json({ error: "Name and imageId are required" });
   }
 
   try {
+    // Step 1: Create the Tag Template without fields
     const newTagTemplate = await prisma.tagTemplate.create({
       data: {
         id: id,
         name,
         imageId: image.id,
+        variantFields: variantFields,
         createdById: profile.id,
         companyId: profile.company.id,
       },
+      include: { image: true, templateVariants: true },
+    });
+
+    // Step 2: Add the fields, using the created tagTemplate ID
+    if (fields && fields.length > 0) {
+      const fieldOperations = fields.map((field) =>
+        prisma.field.create({
+          data: {
+            id: field.id,
+            label: field.label,
+            type: field.type,
+            value: field.value,
+            tagTemplateId: newTagTemplate.id, // Use the ID from step 1
+          },
+        })
+      );
+
+      // Execute all field creations
+      await Promise.all(fieldOperations);
+    }
+
+    // Fetch the updated Tag Template with its fields
+    const updatedTagTemplate = await prisma.tagTemplate.findUnique({
+      where: { id: newTagTemplate.id },
       include: { image: true, fields: true },
     });
-    res.status(201).json(newTagTemplate);
+
+    res.status(201).json(updatedTagTemplate);
   } catch (error) {
     handleError(res, error);
   }
@@ -105,7 +132,7 @@ router.put("/:id", async (req, res) => {
           })),
         },
       },
-      include: { image: true, fields: true },
+      include: { image: true, fields: true, templateVariants: true },
     });
     res.status(200).json(updatedTagTemplate);
   } catch (error) {
